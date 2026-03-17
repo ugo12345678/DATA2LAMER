@@ -71,12 +71,18 @@ FINAL_DATASET_FILE = FINAL_DIR / "dataset_visibility_mvp_2024_2026.parquet"
 FINAL_DATASET_SAMPLE_FILE = FINAL_DIR / "dataset_visibility_mvp_sample.parquet"
 FINAL_DATASET_SUMMARY_FILE = FINAL_DIR / "dataset_visibility_mvp_summary.csv"
 
+TEMPORAL_DATASET_FILE = FINAL_DIR / "dataset_visibility_mvp_temporal_2024_2026.parquet"
+TEMPORAL_DATASET_SAMPLE_FILE = FINAL_DIR / "dataset_visibility_mvp_temporal_sample.parquet"
+TEMPORAL_DATASET_SUMMARY_FILE = FINAL_DIR / "dataset_visibility_mvp_temporal_summary.csv"
+
 ML_READY_FILE = ML_DIR / "dataset_visibility_mvp_ml_ready_2024_2026.parquet"
 ML_READY_SAMPLE_FILE = ML_DIR / "dataset_visibility_mvp_ml_ready_sample.parquet"
 ML_READY_SUMMARY_FILE = ML_DIR / "dataset_visibility_mvp_ml_ready_summary.csv"
 ML_READY_SPOT_COUNTS_FILE = ML_DIR / "dataset_visibility_mvp_ml_ready_spot_counts.csv"
 
-MODEL_FILE = MODELS_DIR / "baseline_visibility_model_2024_2026.joblib"
-METRICS_FILE = REPORTS_DIR / "baseline_metrics_2024_2026.json"
-FEATURE_IMPORTANCE_FILE = REPORTS_DIR / "baseline_feature_importance_2024_2026.csv"
-PREDICTIONS_FILE = PREDICTIONS_DIR / "baseline_predictions_2024_2026.parquet"
+
+MODEL_FILE = MODELS_DIR / "lgbm_visibility_mvp.joblib"
+METRICS_FILE = MODELS_DIR / "lgbm_visibility_mvp_metrics.json"
+FEATURE_IMPORTANCE_FILE = MODELS_DIR / "lgbm_visibility_mvp_feature_importance.csv"
+
+PREDICTIONS_FILE = PREDICTIONS_DIR / "lgbm_visibility_mvp_predictions.parquet"

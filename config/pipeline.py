@@ -6,6 +6,9 @@ from config.settings import (
     FINAL_DATASET_FILE,
     FINAL_DATASET_SAMPLE_FILE,
     FINAL_DATASET_SUMMARY_FILE,
+    TEMPORAL_DATASET_FILE,
+    TEMPORAL_DATASET_SAMPLE_FILE,
+    TEMPORAL_DATASET_SUMMARY_FILE,
     ML_READY_FILE,
     ML_READY_SAMPLE_FILE,
     ML_READY_SUMMARY_FILE,
@@ -61,9 +64,12 @@ BUILD_SCRIPTS = [
 
 POST_BUILD_SCRIPTS = [
     "06_join_features.py",
+    "06b_add_temporal_features.py",
     "07_prepare_ml_dataset.py",
-    # "08_train_baseline_model.py",
+    "08_train_baseline_model.py",
 ]
+
+PIPELINE_SCRIPTS = BUILD_SCRIPTS + POST_BUILD_SCRIPTS
 
 SCRIPT_OUTPUTS = {
     "01_build_target_zsd_pipeline.py": [
@@ -95,6 +101,11 @@ SCRIPT_OUTPUTS = {
         FINAL_DATASET_FILE,
         FINAL_DATASET_SAMPLE_FILE,
         FINAL_DATASET_SUMMARY_FILE,
+    ],
+    "06b_add_temporal_features.py": [
+        TEMPORAL_DATASET_FILE,
+        TEMPORAL_DATASET_SAMPLE_FILE,
+        TEMPORAL_DATASET_SUMMARY_FILE,
     ],
     "07_prepare_ml_dataset.py": [
         ML_READY_FILE,

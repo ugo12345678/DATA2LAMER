@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from config.settings import (
-    FINAL_DATASET_FILE,
+    TEMPORAL_DATASET_FILE,
     ML_DIR,
     ML_READY_FILE,
     ML_READY_SAMPLE_FILE,
@@ -22,13 +22,13 @@ from src.utils.logging_utils import (
     log_kv,
     log_df_head,
     log_file_written,
-    log_dataset_overview,
 )
 from src.utils.summary_utils import (
     build_column_summary,
     build_spot_date_coverage,
 )
 
+USE_STATIC_FEATURES = False
 
 BASE_COLS = [
     "date",
@@ -65,10 +65,26 @@ REQUIRED_COLS = [
     "rain_24h",
     "rain_48h",
     "rain_72h",
-    "wind_relative_to_coast",
 ]
 
-OPTIONAL_COLS = [
+TEMPORAL_OPTIONAL_COLS = [
+    "wave_height_lag_1",
+    "wave_energy_lag_1",
+    "wave_period_lag_1",
+    "rain_24h_lag_1",
+    "rain_48h_lag_1",
+    "rain_72h_lag_1",
+    "current_speed_lag_1",
+    "chl_model_lag_1",
+    "sst_lag_1",
+    "wave_height_roll3_mean",
+    "wave_energy_roll3_mean",
+    "current_speed_roll3_mean",
+    "sst_roll3_mean",
+    # "zsd_lag_1",
+]
+
+STATIC_COLS = [
     "bathy_point",
     "bathy_mean_150m",
     "bathy_mean_300m",
@@ -99,12 +115,20 @@ def validate_input_columns(df: pd.DataFrame) -> None:
         raise KeyError(f"Colonnes required manquantes: {missing_required}")
 
 
+def get_selected_columns(df: pd.DataFrame) -> list[str]:
+    selected = BASE_COLS + REQUIRED_COLS
+    selected += [c for c in TEMPORAL_OPTIONAL_COLS if c in df.columns]
+
+    if USE_STATIC_FEATURES:
+        selected += [c for c in STATIC_COLS if c in df.columns]
+
+    return list(dict.fromkeys(selected))
+
+
 def build_ml_dataset(df: pd.DataFrame) -> pd.DataFrame:
     validate_input_columns(df)
 
-    selected_cols = BASE_COLS + REQUIRED_COLS + [c for c in OPTIONAL_COLS if c in df.columns]
-    selected_cols = list(dict.fromkeys(selected_cols))
-
+    selected_cols = get_selected_columns(df)
     out = df[selected_cols].copy()
     out["date"] = pd.to_datetime(out["date"], errors="coerce").dt.floor("D")
 
@@ -117,11 +141,12 @@ def build_ml_dataset(df: pd.DataFrame) -> pd.DataFrame:
 
 def main() -> None:
     ensure_dir(ML_DIR)
-    assert_file_exists(FINAL_DATASET_FILE, label="INPUT_FILE")
+    assert_file_exists(TEMPORAL_DATASET_FILE, label="INPUT_FILE")
 
-    log_kv("INPUT_FILE", FINAL_DATASET_FILE)
+    log_kv("INPUT_FILE", TEMPORAL_DATASET_FILE)
+    log_kv("USE_STATIC_FEATURES", USE_STATIC_FEATURES)
 
-    df = read_parquet(FINAL_DATASET_FILE, label="INPUT_FILE")
+    df = read_parquet(TEMPORAL_DATASET_FILE, label="INPUT_FILE")
 
     print(f"Shape brut: {df.shape}")
     print(f"Nb spots brut: {df['spot_id'].nunique()}")
@@ -134,6 +159,13 @@ def main() -> None:
     total = len(df)
     pct = round((kept / total) * 100, 1) if total else 0.0
     print(f"Lignes gardées après filtre ML: {kept}/{total} ({pct}%)")
+
+    if USE_STATIC_FEATURES:
+        kept_static = [c for c in STATIC_COLS if c in ml_df.columns]
+        print(f"Colonnes static conservées: {kept_static}")
+    else:
+        removed_static = [c for c in STATIC_COLS if c in df.columns]
+        print(f"Colonnes static exclues: {removed_static}")
 
     summary_df = build_column_summary(ml_df)
     spot_counts_df = build_spot_date_coverage(ml_df, spot_col="spot_id", date_col="date")

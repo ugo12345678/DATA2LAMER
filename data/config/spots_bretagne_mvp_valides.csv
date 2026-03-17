@@ -1,0 +1,168 @@
+spot_id,name,lat,lon,coast_orientation_deg,cluster
+abers_01,Abers - Nord 01,48.609564,-4.642123,290,abers
+abers_02,Abers - Nord-Est 02,48.643587,-4.559644,310,abers
+abers_03,Abers - Est 03,48.634068,-4.646996,270,abers
+abers_05,Abers - Sud 05,48.611199,-4.614229,290,abers
+abers_06,Abers - Sud-Ouest 06,48.648539,-4.589892,290,abers
+abers_08,Abers - Nord-Ouest 08,48.602411,-4.618672,310,abers
+abers_10,Abers - Côtier 10,48.638704,-4.564493,320,abers
+audierne_02,Audierne - Nord-Est 02,47.994652,-4.563328,210,audierne
+audierne_07,Audierne - Ouest 07,47.972297,-4.502552,210,audierne
+audierne_08,Audierne - Nord-Ouest 08,47.972927,-4.486667,240,audierne
+brehat_01,Bréhat - Nord 01,48.806265,-2.960672,180,brehat
+brehat_02,Bréhat - Nord-Est 02,48.857092,-2.935697,150,brehat
+brehat_03,Bréhat - Est 03,48.840617,-2.945003,200,brehat
+brehat_04,Bréhat - Sud-Est 04,48.873111,-2.971759,200,brehat
+brehat_05,Bréhat - Sud 05,48.835408,-2.976491,150,brehat
+brehat_06,Bréhat - Sud-Ouest 06,48.839476,-2.993523,190,brehat
+brehat_07,Bréhat - Ouest 07,48.84504,-2.930459,150,brehat
+brehat_08,Bréhat - Nord-Ouest 08,48.837896,-2.984248,200,brehat
+brehat_09,Bréhat - Large 09,48.806082,-2.912885,150,brehat
+brehat_10,Bréhat - Côtier 10,48.84506,-2.907164,180,brehat
+cancale_06,Cancale - Sud-Ouest 06,48.686853,-1.813594,60,cancale
+cancale_10,Cancale - Côtier 10,48.714082,-1.830053,40,cancale
+cap_frehel_01,Cap Fréhel - Nord 01,48.731,-2.309125,10,cap_frehel
+cap_frehel_02,Cap Fréhel - Nord-Est 02,48.730079,-2.286107,350,cap_frehel
+cap_frehel_03,Cap Fréhel - Est 03,48.696957,-2.350972,20,cap_frehel
+cap_frehel_04,Cap Fréhel - Sud-Est 04,48.702754,-2.286182,20,cap_frehel
+cap_frehel_05,Cap Fréhel - Sud 05,48.728478,-2.345065,10,cap_frehel
+cap_frehel_06,Cap Fréhel - Sud-Ouest 06,48.722261,-2.28032,50,cap_frehel
+cap_frehel_07,Cap Fréhel - Ouest 07,48.702386,-2.321669,350,cap_frehel
+cap_frehel_08,Cap Fréhel - Nord-Ouest 08,48.688633,-2.27128,40,cap_frehel
+cap_frehel_09,Cap Fréhel - Large 09,48.704067,-2.330578,40,cap_frehel
+cap_frehel_10,Cap Fréhel - Côtier 10,48.732371,-2.347304,0,cap_frehel
+cap_sizun_01,Cap Sizun - Nord 01,47.999663,-4.589807,290,cap_sizun
+concarneau_02,Concarneau - Nord-Est 02,47.839349,-3.922754,120,concarneau
+concarneau_03,Concarneau - Est 03,47.830986,-3.932133,130,concarneau
+concarneau_06,Concarneau - Sud-Ouest 06,47.850414,-3.951235,140,concarneau
+crozon_01,Crozon - Nord 01,48.207843,-4.581236,240,crozon
+crozon_05,Crozon - Sud 05,48.222658,-4.578202,210,crozon
+crozon_07,Crozon - Ouest 07,48.240687,-4.60802,240,crozon
+crozon_08,Crozon - Nord-Ouest 08,48.241572,-4.584385,220,crozon
+crozon_09,Crozon - Large 09,48.238425,-4.60281,220,crozon
+crozon_10,Crozon - Côtier 10,48.209718,-4.624702,210,crozon
+douarnenez_02,Douarnenez - Nord-Est 02,48.114551,-4.322943,255,douarnenez
+douarnenez_03,Douarnenez - Est 03,48.106161,-4.301783,275,douarnenez
+douarnenez_04,Douarnenez - Sud-Est 04,48.119851,-4.325624,275,douarnenez
+erquy_02,Erquy - Nord-Est 02,48.630188,-2.509337,40,erquy
+erquy_04,Erquy - Sud-Est 04,48.663996,-2.488374,30,erquy
+erquy_07,Erquy - Ouest 07,48.650884,-2.498421,20,erquy
+glenan_01,Glénan - Nord 01,47.722914,-3.945317,210,glenan
+glenan_02,Glénan - Nord-Est 02,47.730154,-3.968613,160,glenan
+glenan_03,Glénan - Est 03,47.697018,-3.985046,170,glenan
+glenan_04,Glénan - Sud-Est 04,47.722076,-3.925344,150,glenan
+glenan_05,Glénan - Sud 05,47.723792,-3.943344,160,glenan
+glenan_06,Glénan - Sud-Ouest 06,47.692461,-3.999598,170,glenan
+glenan_07,Glénan - Ouest 07,47.746172,-3.949285,180,glenan
+glenan_08,Glénan - Nord-Ouest 08,47.719599,-3.951938,150,glenan
+glenan_09,Glénan - Large 09,47.71182,-3.957919,160,glenan
+glenan_10,Glénan - Côtier 10,47.736662,-4.005892,180,glenan
+groix_04,Groix - Sud-Est 04,47.653235,-3.453867,210,groix
+groix_05,Groix - Sud 05,47.656084,-3.520663,200,groix
+groix_06,Groix - Sud-Ouest 06,47.659955,-3.463861,240,groix
+groix_07,Groix - Ouest 07,47.592376,-3.448284,190,groix
+groix_08,Groix - Nord-Ouest 08,47.59807,-3.478606,230,groix
+groix_09,Groix - Large 09,47.650343,-3.4321,200,groix
+iroise_01,Mer d'Iroise - Nord 01,48.39596,-4.905127,180,iroise
+iroise_02,Mer d'Iroise - Nord-Est 02,48.372314,-4.93544,220,iroise
+iroise_03,Mer d'Iroise - Est 03,48.374231,-4.962205,170,iroise
+iroise_04,Mer d'Iroise - Sud-Est 04,48.398269,-4.945602,230,iroise
+iroise_05,Mer d'Iroise - Sud 05,48.391422,-4.900045,190,iroise
+iroise_06,Mer d'Iroise - Sud-Ouest 06,48.412147,-4.878523,220,iroise
+iroise_07,Mer d'Iroise - Ouest 07,48.383244,-4.970258,230,iroise
+iroise_08,Mer d'Iroise - Nord-Ouest 08,48.409927,-4.91467,190,iroise
+iroise_09,Mer d'Iroise - Large 09,48.364546,-4.9834,220,iroise
+iroise_10,Mer d'Iroise - Côtier 10,48.399565,-4.92397,190,iroise
+le_conquet_09,Le Conquet - Large 09,48.354037,-4.804925,330,le_conquet
+loctudy_08,Loctudy - Nord-Ouest 08,47.816175,-4.151092,150,loctudy
+loctudy_09,Loctudy - Large 09,47.823749,-4.162361,130,loctudy
+lorient_09,Lorient - Large 09,47.695164,-3.328553,190,lorient
+molene_01,Molène - Nord 01,48.40241,-4.975841,170,molene
+molene_02,Molène - Nord-Est 02,48.400239,-4.939057,120,molene
+molene_03,Molène - Est 03,48.39868,-4.939344,170,molene
+molene_04,Molène - Sud-Est 04,48.39141,-5.014715,150,molene
+molene_05,Molène - Sud 05,48.417378,-4.994703,180,molene
+molene_06,Molène - Sud-Ouest 06,48.429683,-4.989027,150,molene
+molene_07,Molène - Ouest 07,48.397377,-4.932778,170,molene
+molene_08,Molène - Nord-Ouest 08,48.374318,-4.939412,180,molene
+molene_09,Molène - Large 09,48.402248,-5.003211,130,molene
+molene_10,Molène - Côtier 10,48.392801,-5.003464,180,molene
+morlaix_baie_01,Baie de Morlaix - Nord 01,48.704349,-3.927512,320,morlaix_baie
+morlaix_baie_02,Baie de Morlaix - Nord-Est 02,48.666702,-3.890217,330,morlaix_baie
+morlaix_baie_04,Baie de Morlaix - Sud-Est 04,48.677273,-3.93226,290,morlaix_baie
+morlaix_baie_06,Baie de Morlaix - Sud-Ouest 06,48.716976,-3.890555,300,morlaix_baie
+morlaix_baie_07,Baie de Morlaix - Ouest 07,48.694229,-3.915671,290,morlaix_baie
+morlaix_baie_08,Baie de Morlaix - Nord-Ouest 08,48.688759,-3.9416,310,morlaix_baie
+morlaix_baie_09,Baie de Morlaix - Large 09,48.705273,-3.954967,280,morlaix_baie
+morlaix_baie_10,Baie de Morlaix - Côtier 10,48.719715,-3.958854,290,morlaix_baie
+ouessant_01,Ouessant - Nord 01,48.444378,-5.118461,270,ouessant
+ouessant_05,Ouessant - Sud 05,48.434639,-5.111239,230,ouessant
+ouessant_06,Ouessant - Sud-Ouest 06,48.429022,-5.160915,270,ouessant
+ouessant_07,Ouessant - Ouest 07,48.468837,-5.155193,240,ouessant
+ouessant_08,Ouessant - Nord-Ouest 08,48.482775,-5.122864,250,ouessant
+ouessant_09,Ouessant - Large 09,48.462135,-5.150377,250,ouessant
+ouessant_10,Ouessant - Côtier 10,48.439501,-5.155529,250,ouessant
+paimpol_02,Paimpol - Nord-Est 02,48.817901,-2.978464,10,paimpol
+paimpol_03,Paimpol - Est 03,48.837206,-2.993928,340,paimpol
+paimpol_04,Paimpol - Sud-Est 04,48.849738,-2.948804,350,paimpol
+paimpol_05,Paimpol - Sud 05,48.824317,-3.017707,330,paimpol
+paimpol_06,Paimpol - Sud-Ouest 06,48.839266,-2.960804,0,paimpol
+paimpol_09,Paimpol - Large 09,48.848156,-3.023769,0,paimpol
+paimpol_10,Paimpol - Côtier 10,48.828433,-2.983284,310,paimpol
+penmarch_01,Penmarc'h - Nord 01,47.779391,-4.348343,160,penmarch
+penmarch_02,Penmarc'h - Nord-Est 02,47.792872,-4.375886,170,penmarch
+penmarch_03,Penmarc'h - Est 03,47.797599,-4.382108,170,penmarch
+penmarch_04,Penmarc'h - Sud-Est 04,47.780722,-4.385232,170,penmarch
+penmarch_05,Penmarc'h - Sud 05,47.805434,-4.416794,190,penmarch
+penmarch_06,Penmarc'h - Sud-Ouest 06,47.790368,-4.371135,200,penmarch
+penmarch_07,Penmarc'h - Ouest 07,47.779888,-4.378331,150,penmarch
+penmarch_08,Penmarc'h - Nord-Ouest 08,47.775406,-4.389391,180,penmarch
+penmarch_09,Penmarc'h - Large 09,47.777912,-4.402044,190,penmarch
+perros_guirec_04,Perros-Guirec - Sud-Est 04,48.857568,-3.464701,10,perros_guirec
+perros_guirec_07,Perros-Guirec - Ouest 07,48.845663,-3.485208,350,perros_guirec
+perros_guirec_09,Perros-Guirec - Large 09,48.838718,-3.470015,330,perros_guirec
+portsall_06,Portsall - Sud-Ouest 06,48.555177,-4.732606,280,portsall
+portsall_08,Portsall - Nord-Ouest 08,48.607109,-4.758635,330,portsall
+portsall_09,Portsall - Large 09,48.583409,-4.734488,310,portsall
+portsall_10,Portsall - Côtier 10,48.567179,-4.739767,310,portsall
+quiberon_01,Quiberon - Nord 01,47.478674,-3.04765,140,quiberon
+quiberon_03,Quiberon - Est 03,47.482688,-3.072218,160,quiberon
+quiberon_04,Quiberon - Sud-Est 04,47.507018,-3.077255,170,quiberon
+quiberon_05,Quiberon - Sud 05,47.477336,-3.036062,140,quiberon
+quiberon_06,Quiberon - Sud-Ouest 06,47.482026,-3.041703,140,quiberon
+quiberon_07,Quiberon - Ouest 07,47.445664,-3.139205,120,quiberon
+quiberon_08,Quiberon - Nord-Ouest 08,47.478591,-3.075974,150,quiberon
+quiberon_09,Quiberon - Large 09,47.498779,-3.099046,180,quiberon
+rade_brest_01,Rade de Brest - Nord 01,48.306405,-4.439571,270,rade_brest
+rade_brest_02,Rade de Brest - Nord-Est 02,48.342473,-4.449346,250,rade_brest
+rade_brest_05,Rade de Brest - Sud 05,48.335216,-4.460966,210,rade_brest
+rade_brest_08,Rade de Brest - Nord-Ouest 08,48.320773,-4.434811,240,rade_brest
+rade_brest_09,Rade de Brest - Large 09,48.311152,-4.386355,270,rade_brest
+rade_brest_10,Rade de Brest - Côtier 10,48.308614,-4.472993,250,rade_brest
+roscoff_01,Roscoff - Nord 01,48.755816,-3.976698,280,roscoff
+roscoff_02,Roscoff - Nord-Est 02,48.698995,-3.950768,290,roscoff
+roscoff_03,Roscoff - Est 03,48.717027,-3.934269,280,roscoff
+roscoff_06,Roscoff - Sud-Ouest 06,48.716978,-3.965022,320,roscoff
+roscoff_07,Roscoff - Ouest 07,48.70973,-4.027002,310,roscoff
+roscoff_08,Roscoff - Nord-Ouest 08,48.755565,-4.03569,270,roscoff
+roscoff_10,Roscoff - Côtier 10,48.730315,-3.959519,300,roscoff
+saint_cast_02,Saint-Cast - Nord-Est 02,48.649417,-2.213107,0,saint_cast
+saint_cast_03,Saint-Cast - Est 03,48.667417,-2.246437,0,saint_cast
+saint_cast_04,Saint-Cast - Sud-Est 04,48.632957,-2.241427,30,saint_cast
+saint_cast_05,Saint-Cast - Sud 05,48.651629,-2.217407,350,saint_cast
+saint_cast_06,Saint-Cast - Sud-Ouest 06,48.67502,-2.221619,30,saint_cast
+saint_cast_07,Saint-Cast - Ouest 07,48.660968,-2.260682,350,saint_cast
+saint_cast_09,Saint-Cast - Large 09,48.651549,-2.280421,20,saint_cast
+saint_malo_01,Saint-Malo - Nord 01,48.68255,-1.999481,330,saint_malo
+saint_malo_02,Saint-Malo - Nord-Est 02,48.647208,-2.069003,310,saint_malo
+saint_malo_03,Saint-Malo - Est 03,48.658078,-2.002112,340,saint_malo
+saint_malo_07,Saint-Malo - Ouest 07,48.63645,-2.0397,340,saint_malo
+saint_malo_08,Saint-Malo - Nord-Ouest 08,48.659287,-2.037929,320,saint_malo
+tregastel_01,Trégastel - Nord 01,48.841214,-3.544207,340,tregastel
+tregastel_02,Trégastel - Nord-Est 02,48.833805,-3.507711,0,tregastel
+tregastel_03,Trégastel - Est 03,48.834623,-3.557549,350,tregastel
+tregastel_05,Trégastel - Sud 05,48.863566,-3.555714,310,tregastel
+tregastel_06,Trégastel - Sud-Ouest 06,48.851484,-3.536907,350,tregastel
+tregastel_08,Trégastel - Nord-Ouest 08,48.813263,-3.573317,320,tregastel
+tregastel_09,Trégastel - Large 09,48.854954,-3.502544,330,tregastel
+tregastel_10,Trégastel - Côtier 10,48.861072,-3.471132,330,tregastel

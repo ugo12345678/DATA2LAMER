@@ -30,7 +30,6 @@ from src.utils.io_utils import (
     save_parquet_bundle,
 )
 from src.utils.logging_utils import (
-    print_header,
     log_kv,
     log_file_written,
     log_shape,
@@ -57,9 +56,9 @@ BUFFER_RADII_M = [150, 300]
 
 STATIC_REQUIRED_SPOT_COLS = [
     "spot_id",
-    "spot_name",
-    "spot_lat",
-    "spot_lon",
+    "name",
+    "lat",
+    "lon",
 ]
 
 STATIC_OPTIONAL_META_COLS = [
@@ -293,8 +292,8 @@ def compute_static_features_for_spot(
 def build_static_features(spots_df: pd.DataFrame, bathy_file: Path, coast_file: Path) -> pd.DataFrame:
     spots_gdf = ensure_metric_spots_gdf(
         spots_df,
-        lon_col="spot_lon",
-        lat_col="spot_lat",
+        lon_col="lon",
+        lat_col="lat",
         metric_crs=METRIC_CRS,
     )
 
@@ -349,8 +348,6 @@ def build_static_features(spots_df: pd.DataFrame, bathy_file: Path, coast_file: 
 # MAIN
 # ============================================================================
 def main() -> None:
-    print_header("RUN SCRIPT: 05b_build_static_pipeline.py")
-
     ensure_dir(FEATURES_DIR)
     ensure_dir(RAW_STATIC_DIR)
     ensure_dir(BATHY_DIR)
