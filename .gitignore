@@ -1,0 +1,109 @@
+# =========================================================
+# Python
+# =========================================================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Build / packaging
+build/
+dist/
+.eggs/
+*.egg-info/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs / temp
+*.log
+*.tmp
+*.temp
+tmp/
+temp/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# VS Code / JetBrains
+.vscode/
+.idea/
+
+# =========================================================
+# Environment / secrets
+# =========================================================
+.env
+.env.*
+!.env.example
+
+# =========================================================
+# Local ML / data artifacts
+# =========================================================
+
+# Ignore generated data folders
+data/raw/
+data/processed/
+data/models/
+data/reports/
+data/predictions/
+
+# Keep config/reference data
+!data/
+!data/config/
+!spots_bretagne_mvp_50.csv
+
+# Optional: keep README placeholders if you create them
+!data/**/.gitkeep
+
+# =========================================================
+# Model / ML artifacts
+# =========================================================
+*.pkl
+*.joblib
+*.onnx
+*.h5
+*.pt
+*.pth
+*.ckpt
+
+# =========================================================
+# Parquet / netCDF / large generated files
+# =========================================================
+*.parquet
+*.feather
+*.nc
+*.grib
+*.grib2
+*.zip
+*.tar
+*.gz
+
+# =========================================================
+# Reports / figures / exports generated locally
+# =========================================================
+*.html
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.svg
+
+# If you later want to version docs/images manually,
+# move them outside generated folders or remove these rules.

@@ -1,0 +1,13 @@
+numpy
+pandas
+pyarrow
+xarray
+copernicusmarine
+scikit-learn
+lightgbm
+joblib
+shapely
+pyproj
+rasterio
+geopandas
+py7zr

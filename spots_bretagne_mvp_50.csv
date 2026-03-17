@@ -1,0 +1,51 @@
+spot_id,name,lat,lon,coast_orientation_deg,cluster
+saint_malo_grand_be_01,Grand Bé Ouest,48.651,-2.036,320,saint_malo
+saint_malo_cezembre_01,Cézembre Nord-Ouest,48.673,-1.99,330,saint_malo
+saint_malo_cezembre_02,Cézembre Sud,48.655,-1.968,180,saint_malo
+saint_cast_laplace_01,Baie Fresnaye - Laplace secteur,48.642,-2.266,10,saint_cast
+cap_frehel_catis_01,La Catis secteur,48.706,-2.302,20,cap_frehel
+brehat_paumelles_01,Bréhat Ouest - Paumelles,48.841,-3.01,260,brehat
+brehat_ferlas_01,Bréhat Sud - Ferlas,48.818,-2.972,180,brehat
+brehat_rocher_rouge_01,Bréhat Est - Rocher Rouge,48.852,-2.936,90,brehat
+trieux_vieille_treou_01,Trieux - Vieille du Tréou,48.842,-3.06,290,trieux
+paimpol_loguivy_01,Loguivy de la Mer large,48.825,-3.026,340,paimpol
+aber_wrac_h_01,Aber Wrac'h extérieur Ouest,48.603,-4.596,290,abers
+aber_wrac_h_02,Aber Wrac'h extérieur Est,48.611,-4.554,70,abers
+ile_vierge_01,Île Vierge Sud,48.645,-4.571,180,abers
+landeda_guissény_01,Baie de Guissény Ouest,48.634,-4.669,300,abers
+portsall_01,Portsall large,48.575,-4.711,310,abers
+le_conquet_01,Le Conquet Nord,48.365,-4.802,340,iroise
+pointe_saint_mathieu_01,Pointe Saint-Mathieu Ouest,48.332,-4.775,270,iroise
+molene_01,Molène Sud-Est,48.396,-4.957,135,iroise
+ouessant_lampaul_01,Ouessant - Lampaul Sud,48.454,-5.1,190,ouessant
+ouessant_kerzoncou_01,Ouessant - Ouest Kerzoncou,48.456,-5.168,260,ouessant
+rade_brest_tinduff_01,Rade de Brest - Tinduff,48.3,-4.321,330,rade_brest
+rade_brest_roscanvel_01,Rade de Brest - Roscanvel,48.314,-4.548,250,rade_brest
+rade_brest_landrevennec_01,Rade de Brest - Landévennec,48.29,-4.27,220,rade_brest
+rade_brest_anse_moulin_01,Rade de Brest - Anse du Moulin Blanc,48.391,-4.429,80,rade_brest
+rade_brest_portzic_01,Rade de Brest - Portzic,48.354,-4.575,280,rade_brest
+morgat_kador_01,Morgat - Kador,48.227,-4.503,260,crozon
+morgat_ile_vierge_01,Morgat - Île Vierge,48.219,-4.513,260,crozon
+pen_hir_01,Pen-Hir Sud,48.251,-4.621,220,crozon
+pen_hir_02,Pen-Hir Ouest,48.256,-4.64,270,crozon
+camaret_toulinguet_01,Toulinguet Sud,48.239,-4.649,210,crozon
+douarnenez_tristan_01,Île Tristan Ouest,48.089,-4.355,250,douarnenez
+douarnenez_ris_01,Plage du Ris large,48.082,-4.302,300,douarnenez
+cap_sizun_loche_01,Pointe du Millier,48.033,-4.529,250,cap_sizun
+cap_sizun_goulien_01,Baie des Trépassés Nord,48.047,-4.698,330,cap_sizun
+audierne_raoulic_01,Audierne - Raoulic,48.015,-4.556,220,cap_sizun
+concarneau_cabellou_01,Concarneau - Cabellou,47.858,-3.888,150,concarneau
+glenan_saint_nicolas_01,Glénan - Saint-Nicolas Ouest,47.716,-3.997,270,glenan
+glenan_penfret_01,Glénan - Penfret Est,47.72,-3.928,90,glenan
+glenan_cigogne_01,Glénan - La Cigogne Sud,47.708,-3.956,180,glenan
+glenan_guiriden_01,Glénan - Guiriden Nord,47.736,-3.972,10,glenan
+larmor_devastation_01,Larmor - Dévastation,47.699,-3.378,180,larmor
+groix_port_tudy_01,Groix - Port-Tudy Ouest,47.64,-3.451,260,groix
+groix_pointe_chats_01,Groix - Pointe des Chats,47.624,-3.395,120,groix
+groix_troupeau_01,Groix - Trou de l'Enfer secteur,47.615,-3.466,220,groix
+groix_pen_men_01,Groix - Pen Men,47.622,-3.552,260,groix
+quiberon_conguel_01,Quiberon - Pointe du Conguel,47.468,-3.089,140,quiberon
+quiberon_porigo_01,Quiberon - Porigo,47.483,-3.106,150,quiberon
+quiberon_aerodrome_01,Quiberon - Aérodrome,47.496,-3.126,170,quiberon
+houat_treac_h_01,Houat - Treac'h er Goured,47.392,-2.957,150,houat
+hoedic_vieux_chateau_01,Hoëdic - Vieux Château,47.343,-2.87,150,hoedic
