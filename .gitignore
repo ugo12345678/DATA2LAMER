@@ -66,8 +66,6 @@ data/predictions/
 
 # Keep config/reference data
 !data/
-!data/config/
-!spots_bretagne_mvp_50.csv
 
 # Optional: keep README placeholders if you create them
 !data/**/.gitkeep
