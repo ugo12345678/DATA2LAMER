@@ -18,7 +18,7 @@ try:
 except Exception:  # pragma: no cover
     LGBMRegressor = None
 
-from app.services.feature_sets import CATEGORICAL_COLS, ID_COLS, ORDINAL_COLS, TARGET_COL
+from services.feature_sets import CATEGORICAL_COLS, ID_COLS, ORDINAL_COLS, TARGET_COL
 
 
 RANDOM_STATE = 42

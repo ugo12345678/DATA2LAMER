@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from app.services.data_loader import (
+from services.data_loader import (
     filter_dataset,
     load_dataset,
     resolve_dataset_path,

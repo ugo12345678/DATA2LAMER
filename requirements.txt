@@ -11,3 +11,7 @@ pyproj
 rasterio
 geopandas
 py7zr
+streamlit
+matplotlib
+boto3
+tomli

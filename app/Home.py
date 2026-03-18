@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import streamlit as st
 
-from app.services.data_loader import build_dataset_info, load_dataset, resolve_dataset_path
-from app.services.feature_sets import get_feature_sets
+from services.data_loader import build_dataset_info, load_dataset, resolve_dataset_path
+from services.feature_sets import get_feature_sets
 
 
 st.set_page_config(page_title="Bretagne Visibility ML", page_icon="🌊", layout="wide")

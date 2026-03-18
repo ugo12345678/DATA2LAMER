@@ -4,9 +4,9 @@ from datetime import datetime
 
 import streamlit as st
 
-from app.services.data_loader import load_dataset, resolve_dataset_path
-from app.services.feature_sets import get_feature_sets, prepare_training_frame
-from app.services.train import train_and_evaluate
+from services.data_loader import load_dataset, resolve_dataset_path
+from services.feature_sets import get_feature_sets, prepare_training_frame
+from services.train import train_and_evaluate
 
 
 st.title("🧠 Train")
