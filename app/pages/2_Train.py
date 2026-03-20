@@ -4,7 +4,7 @@ from datetime import datetime
 
 import streamlit as st
 
-from services.data_loader import load_dataset, resolve_dataset_path
+from services.data_loader import get_dataset_source_label, load_dataset
 from services.feature_sets import get_feature_sets, prepare_training_frame
 from services.train import train_and_evaluate
 
@@ -14,12 +14,17 @@ st.title("🧠 Train")
 if "runs" not in st.session_state:
     st.session_state["runs"] = []
 
+SOURCE_MODE = "auto"
+
 try:
-    df = load_dataset(resolve_dataset_path())
+    df = load_dataset(source=SOURCE_MODE)
+    source_label = get_dataset_source_label(source=SOURCE_MODE)
     feature_sets = get_feature_sets(df)
 except Exception as exc:
     st.error(f"Chargement impossible : {exc}")
     st.stop()
+
+st.caption(f"Source dataset : {source_label}")
 
 model_name = st.selectbox("Modèle", ["Ridge", "RandomForest", "LightGBM"], index=2)
 feature_set_key = st.selectbox(
