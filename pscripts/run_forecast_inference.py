@@ -19,44 +19,79 @@ from pscripts.zones import load_zones
 MODEL_VERSION = os.environ.get("MODEL_VERSION", "v1")
 PREDICTION_SOURCE = os.environ.get("PREDICTION_SOURCE", "github_action")
 
-NON_FEATURE_COLS = {
-    "zone_id",
-    "zone_name",
-    "date",
-    "latitude_min",
-    "latitude_max",
-    "longitude_min",
-    "longitude_max",
-    "lat_center",
-    "lon_center",
-    "grid_lat",
-    "grid_lon",
-}
 
-
-def infer_feature_columns(df: pd.DataFrame, model) -> list[str]:
-    if hasattr(model, "feature_names_in_"):
-        cols = [c for c in model.feature_names_in_ if c in df.columns]
-        if cols:
-            return cols
-
-    excluded = NON_FEATURE_COLS.copy()
-    return [c for c in df.columns if c not in excluded]
+def sanitize_value(v):
+    if pd.isna(v):
+        return None
+    if isinstance(v, pd.Timestamp):
+        return v.isoformat()
+    if hasattr(v, "item"):
+        try:
+            return v.item()
+        except Exception:
+            pass
+    if hasattr(v, "isoformat"):
+        try:
+            return v.isoformat()
+        except Exception:
+            pass
+    return v
 
 
 def sanitize_records(df: pd.DataFrame) -> list[dict]:
     records = []
     for row in df.to_dict(orient="records"):
-        clean = {}
-        for k, v in row.items():
-            if pd.isna(v):
-                clean[k] = None
-            elif hasattr(v, "isoformat"):
-                clean[k] = v.isoformat()
-            else:
-                clean[k] = v
+        clean = {k: sanitize_value(v) for k, v in row.items()}
         records.append(clean)
     return records
+
+
+def resolve_model_artifact(artifact):
+    if not isinstance(artifact, dict):
+        raise TypeError(
+            f"Artefact inattendu: {type(artifact)}. "
+            "Le .joblib attendu doit être un dict contenant preprocessor et model."
+        )
+
+    required_keys = [
+        "preprocessor",
+        "model",
+        "numeric_cols",
+        "categorical_cols",
+        "ordinal_categorical_cols",
+    ]
+    missing_keys = [k for k in required_keys if k not in artifact]
+    if missing_keys:
+        raise KeyError(f"Clés manquantes dans l'artefact modèle: {missing_keys}")
+
+    preprocessor = artifact["preprocessor"]
+    model = artifact["model"]
+    raw_feature_cols = (
+        list(artifact["numeric_cols"])
+        + list(artifact["categorical_cols"])
+        + list(artifact["ordinal_categorical_cols"])
+    )
+
+    return preprocessor, model, raw_feature_cols
+
+
+def prepare_inference_matrix(features_df: pd.DataFrame, raw_feature_cols: list[str]) -> pd.DataFrame:
+    missing_cols = [c for c in raw_feature_cols if c not in features_df.columns]
+    if missing_cols:
+        raise ValueError(f"Features manquantes pour l'inférence: {missing_cols}")
+
+    X_raw = features_df[raw_feature_cols].copy()
+
+    print(f"Nb features brutes attendues: {len(raw_feature_cols)}")
+    print(f"Shape X_raw: {X_raw.shape}")
+
+    nan_counts = X_raw.isna().sum()
+    nan_counts = nan_counts[nan_counts > 0]
+    if not nan_counts.empty:
+        print("NaN par colonne avant preprocessing:")
+        print(nan_counts.to_dict())
+
+    return X_raw
 
 
 def build_prediction_rows(df: pd.DataFrame, preds) -> list[dict]:
@@ -67,11 +102,12 @@ def build_prediction_rows(df: pd.DataFrame, preds) -> list[dict]:
     feature_snapshots = sanitize_records(df.drop(columns=["zone_name"], errors="ignore"))
 
     for i, (_, row) in enumerate(df.iterrows()):
+        target_time = pd.to_datetime(row["date"], errors="coerce", utc=True)
         rows.append(
             {
                 "zone_id": row["zone_id"],
                 "forecast_time": forecast_time,
-                "target_time": pd.to_datetime(row["date"]).isoformat(),
+                "target_time": target_time.isoformat() if pd.notna(target_time) else None,
                 "pred_visibility": float(preds[i]),
                 "model_version": MODEL_VERSION,
                 "run_id": run_id,
@@ -84,6 +120,11 @@ def build_prediction_rows(df: pd.DataFrame, preds) -> list[dict]:
 
 def upsert_predictions(rows: list[dict]) -> None:
     if not rows:
+        return
+
+    rows = [r for r in rows if r["zone_id"] is not None and r["target_time"] is not None]
+    if not rows:
+        print("[WARN] aucune ligne valide à upserter.")
         return
 
     client = get_supabase()
@@ -117,13 +158,20 @@ def main() -> None:
         meteo_df=meteo_df,
     )
     print(f"Feature frame rows: {len(features_df)}")
+    print(f"Feature frame cols: {len(features_df.columns)}")
 
-    model = load_model_from_r2()
-    feature_cols = infer_feature_columns(features_df, model)
-    print(f"Nb features utilisées: {len(feature_cols)}")
+    artifact = load_model_from_r2()
+    print("Type artefact chargé:", type(artifact))
+    if isinstance(artifact, dict):
+        print("Clés artefact:", list(artifact.keys()))
 
-    X = features_df[feature_cols].copy()
-    preds = model.predict(X)
+    preprocessor, model, raw_feature_cols = resolve_model_artifact(artifact)
+
+    X_raw = prepare_inference_matrix(features_df, raw_feature_cols)
+    X_t = preprocessor.transform(X_raw)
+
+    print(f"Shape X_transformed: {X_t.shape}")
+    preds = model.predict(X_t)
 
     rows = build_prediction_rows(features_df, preds)
     upsert_predictions(rows)
