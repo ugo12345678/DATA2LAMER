@@ -1,10 +1,11 @@
 boto3
 joblib
+lightgbm
+scikit-learn==1.7.2
 copernicusmarine
 xarray
 netCDF4
 pandas
 requests
 supabase
-scikit-learn
 numpy
