@@ -1,0 +1,10 @@
+boto3
+joblib
+copernicusmarine
+xarray
+netCDF4
+pandas
+requests
+supabase
+scikit-learn
+numpy

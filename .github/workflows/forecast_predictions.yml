@@ -1,0 +1,51 @@
+name: Forecast Predictions
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+jobs:
+  forecast-job:
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+
+      R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      R2_MODEL_KEY: ${{ secrets.R2_MODEL_KEY }}
+
+      CMEMS_USERNAME: ${{ secrets.CMEMS_USERNAME }}
+      CMEMS_PASSWORD: ${{ secrets.CMEMS_PASSWORD }}
+
+      FORECAST_DAYS: 7
+      FORECAST_TIMEZONE: Europe/Paris
+      OPEN_METEO_BATCH_SIZE: 20
+      ZONE_MARGIN_DEG: 0.03
+
+      MODEL_VERSION: v1
+      PREDICTION_SOURCE: github_action
+
+      # optionnel
+      STATIC_FEATURES_PATH: ""
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-forecast.txt
+
+      - name: Run forecast inference pipeline
+        run: python -m pscripts.run_forecast_inference
