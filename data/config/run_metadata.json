@@ -2,10 +2,10 @@
   "min_valid_days_zsd": 200,
   "downloaded_now": [],
   "saved_outputs": {
-    "spots_valid_csv": "D:\\Code\\POC\\data\\config\\spots_bretagne_mvp_valides.csv",
-    "target_filtered_parquet": "D:\\Code\\POC\\data\\processed\\target\\target_zsd_daily_by_spot_filtered.parquet",
-    "target_filtered_sample_parquet": "D:\\Code\\POC\\data\\processed\\target\\target_zsd_daily_by_spot_filtered_sample.parquet",
-    "spot_counts_csv": "D:\\Code\\POC\\data\\config\\spot_valid_counts.csv"
+    "spots_valid_csv": "D:\\Code\\DATA2LAMER\\data\\config\\spots_bretagne_mvp_valides.csv",
+    "target_filtered_parquet": "D:\\Code\\DATA2LAMER\\data\\processed\\target\\target_zsd_daily_by_spot_filtered.parquet",
+    "target_filtered_sample_parquet": "D:\\Code\\DATA2LAMER\\data\\processed\\target\\target_zsd_daily_by_spot_filtered_sample.parquet",
+    "spot_counts_csv": "D:\\Code\\DATA2LAMER\\data\\config\\spot_valid_counts.csv"
   },
   "build_scripts": [
     "01_build_target_zsd_pipeline.py",

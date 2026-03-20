@@ -31,11 +31,11 @@ def fetch_phy_forecast(zones: pd.DataFrame) -> pd.DataFrame:
     for _, zone in zones.iterrows():
         ds = open_cmems_dataset(
             dataset_id=DATASET_ID,
-            variables=sum(VAR_MAP.values(), []),
+            variables=None,
             zone=zone,
             select_surface=True,
         )
-
+        print("PHY data_vars:", list(ds.data_vars))
         picked = _pick_available_vars(ds)
         if not picked:
             continue
