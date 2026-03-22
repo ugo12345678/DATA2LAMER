@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -18,6 +19,7 @@ from pscripts.zones import load_zones
 
 MODEL_VERSION = os.environ.get("MODEL_VERSION", "v1")
 PREDICTION_SOURCE = os.environ.get("PREDICTION_SOURCE", "github_action")
+FORECAST_THREAD_WORKERS = int(os.environ.get("FORECAST_THREAD_WORKERS", "3"))
 
 
 def sanitize_value(v):
@@ -139,17 +141,37 @@ def main() -> None:
     zones = load_zones()
     print(f"Zones chargées: {len(zones)}")
 
-    phy_df = fetch_phy_forecast(zones)
-    print(f"PHY rows: {len(phy_df)}")
+    with ThreadPoolExecutor(max_workers=FORECAST_THREAD_WORKERS) as executor:
+        futures = {
+            executor.submit(fetch_phy_forecast, zones): "phy",
+            executor.submit(fetch_wav_forecast, zones): "wav",
+            executor.submit(fetch_bgc_forecast, zones): "bgc",
+            executor.submit(fetch_meteo_forecast, zones): "meteo",
+        }
 
-    wav_df = fetch_wav_forecast(zones)
-    print(f"WAV rows: {len(wav_df)}")
+        phy_df = wav_df = bgc_df = meteo_df = pd.DataFrame()
 
-    bgc_df = fetch_bgc_forecast(zones)
-    print(f"BGC rows: {len(bgc_df)}")
+        for future in as_completed(futures):
+            source = futures[future]
+            try:
+                result = future.result()
+                if source == "phy":
+                    phy_df = result
+                    print(f"PHY rows: {len(phy_df)}")
+                elif source == "wav":
+                    wav_df = result
+                    print(f"WAV rows: {len(wav_df)}")
+                elif source == "bgc":
+                    bgc_df = result
+                    print(f"BGC rows: {len(bgc_df)}")
+                elif source == "meteo":
+                    meteo_df = result
+                    print(f"METEO rows: {len(meteo_df)}")
+            except Exception as exc:
+                print(f"[ERROR] Échec récupération {source.upper()} forecast: {exc}")
 
-    meteo_df = fetch_meteo_forecast(zones)
-    print(f"METEO rows: {len(meteo_df)}")
+    if phy_df.empty or wav_df.empty or bgc_df.empty or meteo_df.empty:
+        raise RuntimeError("Un des jeux de données forecast est vide après récupération (échec possible).")
 
     features_df = build_feature_frame(
         phy_df=phy_df,

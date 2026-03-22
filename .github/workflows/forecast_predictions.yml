@@ -2,7 +2,8 @@ name: Forecast Predictions
 
 on:
   schedule:
-    - cron: "0 * * * *"
+    # Une exécution quotidienne, tôt le matin (UTC). Ajuster 4 pour 05h CET/06h CEST.
+    - cron: "0 4 * * *"
   workflow_dispatch:
 
 jobs:
