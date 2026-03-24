@@ -200,6 +200,19 @@ def main() -> None:
     log_kv("RAW_DIR", RAW_DIR)
     log_kv("TARGET_DIR", TARGET_DIR)
 
+    # Rafraîchissement des spots depuis Supabase (si credentials disponibles)
+    supabase_url = os.getenv("SUPABASE_URL")
+    supabase_key = os.getenv("SUPABASE_KEY")
+    if supabase_url and supabase_key:
+        try:
+            from pscripts.spots import save_spots_for_pipeline
+            save_spots_for_pipeline(SPOTS_SOURCE_FILE)
+        except Exception as exc:
+            print(f"[SPOTS] Avertissement: impossible de charger les spots depuis Supabase: {exc}")
+            print(f"[SPOTS] Utilisation du fichier CSV local: {SPOTS_SOURCE_FILE}")
+    else:
+        print(f"[SPOTS] SUPABASE_URL/SUPABASE_KEY non définis, utilisation du CSV local: {SPOTS_SOURCE_FILE}")
+
     downloaded = ensure_all_downloads()
 
     run_script_if_needed(

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 
 import joblib
@@ -23,6 +24,8 @@ from config.settings import (
     FEATURE_IMPORTANCE_FILE,
     PREDICTIONS_FILE,
 )
+
+from scripts.upload_to_r2 import upload_file_to_r2
 
 from src.utils.io_utils import (
     ensure_dir,
@@ -308,6 +311,14 @@ def main() -> None:
     }
 
     joblib.dump(artifact, MODEL_FILE)
+
+    r2_model_key = os.environ.get("R2_MODEL_KEY", "lgbm_visibility_mvp.joblib")
+    try:
+        upload_file_to_r2(MODEL_FILE, r2_model_key)
+    except Exception as exc:
+        print(f"[R2] Avertissement: impossible d'uploader le modèle vers R2: {exc}")
+        print(f"[R2] Le modèle reste disponible localement: {MODEL_FILE}")
+
     write_json(
         {
             "valid": valid_metrics,

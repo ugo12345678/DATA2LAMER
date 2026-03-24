@@ -114,5 +114,49 @@ def main() -> None:
     print("Upload completed successfully.")
 
 
+def upload_file_to_r2(local_path: Path, r2_key: str) -> None:
+    """
+    Upload a local file to R2 using credentials from environment variables.
+    Overwrites any existing object at r2_key (R2 has no versioning by default).
+    """
+    bucket = os.getenv("R2_BUCKET")
+    access_key_id = os.getenv("R2_ACCESS_KEY_ID")
+    secret_access_key = os.getenv("R2_SECRET_ACCESS_KEY")
+    endpoint_url = os.getenv("R2_ENDPOINT_URL")
+    account_id = os.getenv("R2_ACCOUNT_ID")
+    region = os.getenv("R2_REGION", "auto")
+
+    if not bucket or not access_key_id or not secret_access_key:
+        raise ValueError(
+            "R2_BUCKET, R2_ACCESS_KEY_ID et R2_SECRET_ACCESS_KEY doivent être définis."
+        )
+
+    if not endpoint_url:
+        if not account_id:
+            raise ValueError(
+                "R2_ENDPOINT_URL ou R2_ACCOUNT_ID doit être défini."
+            )
+        endpoint_url = f"https://{account_id}.r2.cloudflarestorage.com"
+
+    local_path = Path(local_path)
+    if not local_path.exists():
+        raise FileNotFoundError(f"Fichier local introuvable: {local_path}")
+
+    client = boto3.client(
+        "s3",
+        endpoint_url=endpoint_url,
+        aws_access_key_id=access_key_id,
+        aws_secret_access_key=secret_access_key,
+        region_name=region,
+    )
+
+    content_type, _ = mimetypes.guess_type(str(local_path))
+    extra_args = {"ContentType": content_type} if content_type else {}
+
+    print(f"[R2] Upload {local_path} -> s3://{bucket}/{r2_key} ...")
+    client.upload_file(str(local_path), bucket, r2_key, ExtraArgs=extra_args)
+    print(f"[R2] Upload terminé avec succès.")
+
+
 if __name__ == "__main__":
     main()

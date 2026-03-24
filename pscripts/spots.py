@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pandas as pd
 
 from pscripts.supabase_client import get_supabase
@@ -71,3 +73,35 @@ def load_spots() -> pd.DataFrame:
 
     df = df.sort_values("spot_name", na_position="last").reset_index(drop=True)
     return df
+
+
+def save_spots_for_pipeline(output_path: Path) -> pd.DataFrame:
+    """
+    Charge les spots depuis Supabase et les sauvegarde dans un CSV au format
+    attendu par le pipeline d'entraînement (colonnes: spot_id, name, lat, lon).
+
+    Retourne le DataFrame sauvegardé.
+    """
+    df = load_spots()
+
+    pipeline_df = df.rename(
+        columns={
+            "spot_name": "name",
+            "lat_center": "lat",
+            "lon_center": "lon",
+        }
+    ).copy()
+
+    cols_to_keep = ["spot_id", "name", "lat", "lon"]
+    for optional_col in ["type_fond", "profondeur_moyenne"]:
+        if optional_col in pipeline_df.columns:
+            cols_to_keep.append(optional_col)
+
+    pipeline_df = pipeline_df[cols_to_keep]
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    pipeline_df.to_csv(output_path, index=False)
+
+    print(f"[SPOTS] {len(pipeline_df)} spots sauvegardés depuis Supabase → {output_path}")
+    return pipeline_df
