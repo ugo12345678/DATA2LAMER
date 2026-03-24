@@ -10,7 +10,7 @@ import xarray as xr
 
 CMEMS_USERNAME = os.environ["CMEMS_USERNAME"]
 CMEMS_PASSWORD = os.environ["CMEMS_PASSWORD"]
-FORECAST_DAYS = int(os.environ.get("FORECAST_DAYS", "7"))
+FORECAST_DAYS = int(os.environ.get("FORECAST_DAYS", "5"))
 SPOT_MARGIN_DEG = float(os.environ.get("SPOT_MARGIN_DEG", "0.03"))
 
 
@@ -34,8 +34,13 @@ def open_cmems_dataset(
     variables: list[str] | None,
     spot: pd.Series,
     select_surface: bool = False,
+    start_datetime: str | None = None,
+    end_datetime: str | None = None,
 ) -> xr.Dataset:
-    start_dt, end_dt = forecast_window()
+    if start_datetime and end_datetime:
+        start_dt, end_dt = start_datetime, end_datetime
+    else:
+        start_dt, end_dt = forecast_window()
     bbox = spot_bbox(spot)
 
     ds = copernicusmarine.open_dataset(

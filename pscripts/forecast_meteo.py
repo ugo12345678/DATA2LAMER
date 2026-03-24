@@ -8,7 +8,7 @@ import pandas as pd
 import requests
 
 
-FORECAST_DAYS = int(os.environ.get("FORECAST_DAYS", "7"))
+FORECAST_DAYS = int(os.environ.get("FORECAST_DAYS", "5"))
 TIMEZONE = os.environ.get("FORECAST_TIMEZONE", "Europe/Paris")
 BATCH_SIZE = int(os.environ.get("OPEN_METEO_BATCH_SIZE", "20"))
 REQUEST_TIMEOUT = 120

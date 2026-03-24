@@ -28,11 +28,16 @@ def _pick_available_vars(ds) -> dict[str, str]:
 
 
 def _fetch_bgc_spot(spot: pd.Series) -> pd.DataFrame | None:
+    from datetime import datetime, timedelta, timezone
+    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
+    end_want = today + timedelta(days=4)
     ds = open_cmems_dataset(
         dataset_id=DATASET_ID,
         variables=None,
         spot=spot,
         select_surface=True,
+        start_datetime=today.isoformat(),
+        end_datetime=end_want.isoformat(),
     )
     picked = _pick_available_vars(ds)
     if not picked:
