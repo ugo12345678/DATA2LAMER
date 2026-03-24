@@ -26,7 +26,7 @@ jobs:
       FORECAST_DAYS: 7
       FORECAST_TIMEZONE: Europe/Paris
       OPEN_METEO_BATCH_SIZE: 20
-      ZONE_MARGIN_DEG: 0.03
+      SPOT_MARGIN_DEG: 0.03
 
       MODEL_VERSION: v1
       PREDICTION_SOURCE: github_action

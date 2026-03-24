@@ -14,7 +14,7 @@ from pscripts.forecast_phy import fetch_phy_forecast
 from pscripts.forecast_wav import fetch_wav_forecast
 from pscripts.model_loader import load_model_from_r2
 from pscripts.supabase_client import get_supabase
-from pscripts.zones import load_zones
+from pscripts.spots import load_spots
 
 
 MODEL_VERSION = os.environ.get("MODEL_VERSION", "v1")
@@ -101,13 +101,13 @@ def build_prediction_rows(df: pd.DataFrame, preds) -> list[dict]:
     forecast_time = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0).isoformat()
 
     rows = []
-    feature_snapshots = sanitize_records(df.drop(columns=["zone_name"], errors="ignore"))
+    feature_snapshots = sanitize_records(df.drop(columns=["spot_name"], errors="ignore"))
 
     for i, (_, row) in enumerate(df.iterrows()):
         target_time = pd.to_datetime(row["date"], errors="coerce", utc=True)
         rows.append(
             {
-                "zone_id": row["zone_id"],
+                "spot_id": row["spot_id"],
                 "forecast_time": forecast_time,
                 "target_time": target_time.isoformat() if pd.notna(target_time) else None,
                 "pred_visibility": float(preds[i]),
@@ -124,7 +124,7 @@ def upsert_predictions(rows: list[dict]) -> None:
     if not rows:
         return
 
-    rows = [r for r in rows if r["zone_id"] is not None and r["target_time"] is not None]
+    rows = [r for r in rows if r["spot_id"] is not None and r["target_time"] is not None]
     if not rows:
         print("[WARN] aucune ligne valide à upserter.")
         return
@@ -132,21 +132,21 @@ def upsert_predictions(rows: list[dict]) -> None:
     client = get_supabase()
     (
         client.table("forecast_predictions")
-        .upsert(rows, on_conflict="zone_id,target_time,model_version")
+        .upsert(rows, on_conflict="spot_id,target_time,model_version")
         .execute()
     )
 
 
 def main() -> None:
-    zones = load_zones()
-    print(f"Zones chargées: {len(zones)}")
+    spots = load_spots()
+    print(f"Spots chargées: {len(spots)}")
 
     with ThreadPoolExecutor(max_workers=FORECAST_THREAD_WORKERS) as executor:
         futures = {
-            executor.submit(fetch_phy_forecast, zones): "phy",
-            executor.submit(fetch_wav_forecast, zones): "wav",
-            executor.submit(fetch_bgc_forecast, zones): "bgc",
-            executor.submit(fetch_meteo_forecast, zones): "meteo",
+            executor.submit(fetch_phy_forecast, spots): "phy",
+            executor.submit(fetch_wav_forecast, spots): "wav",
+            executor.submit(fetch_bgc_forecast, spots): "bgc",
+            executor.submit(fetch_meteo_forecast, spots): "meteo",
         }
 
         phy_df = wav_df = bgc_df = meteo_df = pd.DataFrame()

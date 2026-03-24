@@ -6,10 +6,10 @@ from pathlib import Path
 import pandas as pd
 
 
-KEY_COLS = ["zone_id", "date"]
+KEY_COLS = ["spot_id", "date"]
 
 META_COLS = [
-    "zone_name",
+    "spot_name",
     "latitude_min",
     "latitude_max",
     "longitude_min",
@@ -66,7 +66,7 @@ def merge_prefer_left_meta(left: pd.DataFrame, right: pd.DataFrame, right_name: 
     return merged
 
 
-def merge_static_by_zone(df: pd.DataFrame) -> pd.DataFrame:
+def merge_static_by_spot(df: pd.DataFrame) -> pd.DataFrame:
     if not STATIC_FEATURES_PATH:
         return df
 
@@ -76,17 +76,17 @@ def merge_static_by_zone(df: pd.DataFrame) -> pd.DataFrame:
         return df
 
     static_df = pd.read_parquet(static_path)
-    if "zone_id" not in static_df.columns:
-        print("[WARN] zone_id absent du parquet de features statiques.")
+    if "spot_id" not in static_df.columns:
+        print("[WARN] spot_id absent du parquet de features statiques.")
         return df
 
-    static_df = static_df.drop_duplicates(subset=["zone_id"]).copy()
+    static_df = static_df.drop_duplicates(subset=["spot_id"]).copy()
 
-    overlapping_non_key = [c for c in static_df.columns if c in df.columns and c != "zone_id"]
+    overlapping_non_key = [c for c in static_df.columns if c in df.columns and c != "spot_id"]
     rename_map = {c: f"{c}__static" for c in overlapping_non_key}
     static_df = static_df.rename(columns=rename_map)
 
-    merged = df.merge(static_df, on="zone_id", how="left")
+    merged = df.merge(static_df, on="spot_id", how="left")
 
     for original_col in overlapping_non_key:
         static_col = f"{original_col}__static"
@@ -181,7 +181,7 @@ def add_training_schema_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 def add_temporal_features_runtime(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
-    out = out.sort_values(["zone_id", "date"]).reset_index(drop=True)
+    out = out.sort_values(["spot_id", "date"]).reset_index(drop=True)
 
     lag_features = [
         "wave_height",
@@ -202,7 +202,7 @@ def add_temporal_features_runtime(df: pd.DataFrame) -> pd.DataFrame:
         "sst",
     ]
 
-    grouped = out.groupby("zone_id", group_keys=False)
+    grouped = out.groupby("spot_id", group_keys=False)
 
     for col in lag_features:
         if col in out.columns:
@@ -229,10 +229,10 @@ def build_feature_frame(
     df = merge_prefer_left_meta(df, phy_df, "phy")
     df = merge_prefer_left_meta(df, wav_df, "wav")
     df = merge_prefer_left_meta(df, bgc_df, "bgc")
-    df = merge_static_by_zone(df)
+    df = merge_static_by_spot(df)
 
     df = add_training_schema_columns(df)
     df = add_temporal_features_runtime(df)
 
-    df = df.sort_values(["zone_id", "date"]).reset_index(drop=True)
+    df = df.sort_values(["spot_id", "date"]).reset_index(drop=True)
     return df

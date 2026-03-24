@@ -5,11 +5,11 @@ import pandas as pd
 from pscripts.supabase_client import get_supabase
 
 
-def load_zones() -> pd.DataFrame:
+def load_spots() -> pd.DataFrame:
     client = get_supabase()
 
     response = (
-        client.table("zones")
+        client.table("spots")
         .select(
             "id,name,latitude_min,latitude_max,longitude_min,longitude_max,type_fond,profondeur_moyenne"
         )
@@ -18,7 +18,7 @@ def load_zones() -> pd.DataFrame:
 
     rows = response.data or []
     if not rows:
-        raise ValueError("Aucune zones trouvée dans Supabase.")
+        raise ValueError("Aucune spots trouvée dans Supabase.")
 
     df = pd.DataFrame(rows)
 
@@ -32,7 +32,7 @@ def load_zones() -> pd.DataFrame:
     ]
     missing = [c for c in required_cols if c not in df.columns]
     if missing:
-        raise ValueError(f"Colonnes manquantes dans la table zones: {missing}")
+        raise ValueError(f"Colonnes manquantes dans la table spots: {missing}")
 
     df = df.dropna(
         subset=[
@@ -46,8 +46,8 @@ def load_zones() -> pd.DataFrame:
 
     df = df.rename(
         columns={
-            "id": "zone_id",
-            "name": "zone_name",
+            "id": "spot_id",
+            "name": "spot_name",
         }
     )
 
@@ -69,5 +69,5 @@ def load_zones() -> pd.DataFrame:
     df["lat_center"] = (df["latitude_min"] + df["latitude_max"]) / 2.0
     df["lon_center"] = (df["longitude_min"] + df["longitude_max"]) / 2.0
 
-    df = df.sort_values("zone_name", na_position="last").reset_index(drop=True)
+    df = df.sort_values("spot_name", na_position="last").reset_index(drop=True)
     return df

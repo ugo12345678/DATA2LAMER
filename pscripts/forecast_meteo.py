@@ -33,10 +33,10 @@ def chunk_dataframe(df: pd.DataFrame, chunk_size: int):
         yield df.iloc[start:start + chunk_size].copy()
 
 
-def build_request_params_for_batch(zones_batch: pd.DataFrame) -> dict:
+def build_request_params_for_batch(spots_batch: pd.DataFrame) -> dict:
     return {
-        "latitude": ",".join(zones_batch["lat_center"].astype(float).map(str).tolist()),
-        "longitude": ",".join(zones_batch["lon_center"].astype(float).map(str).tolist()),
+        "latitude": ",".join(spots_batch["lat_center"].astype(float).map(str).tolist()),
+        "longitude": ",".join(spots_batch["lon_center"].astype(float).map(str).tolist()),
         "hourly": ",".join(HOURLY_VARS),
         "forecast_days": FORECAST_DAYS,
         "timezone": TIMEZONE,
@@ -131,31 +131,31 @@ def aggregate_daily(hourly_df: pd.DataFrame) -> pd.DataFrame:
     return agg
 
 
-def add_zone_metadata(df: pd.DataFrame, zone: pd.Series) -> pd.DataFrame:
+def add_spot_metadata(df: pd.DataFrame, spot: pd.Series) -> pd.DataFrame:
     out = df.copy()
-    out["zone_id"] = zone["zone_id"]
-    out["zone_name"] = zone["zone_name"]
-    out["latitude_min"] = float(zone["latitude_min"])
-    out["latitude_max"] = float(zone["latitude_max"])
-    out["longitude_min"] = float(zone["longitude_min"])
-    out["longitude_max"] = float(zone["longitude_max"])
-    out["lat_center"] = float(zone["lat_center"])
-    out["lon_center"] = float(zone["lon_center"])
+    out["spot_id"] = spot["spot_id"]
+    out["spot_name"] = spot["spot_name"]
+    out["latitude_min"] = float(spot["latitude_min"])
+    out["latitude_max"] = float(spot["latitude_max"])
+    out["longitude_min"] = float(spot["longitude_min"])
+    out["longitude_max"] = float(spot["longitude_max"])
+    out["lat_center"] = float(spot["lat_center"])
+    out["lon_center"] = float(spot["lon_center"])
     return out
 
 
-def fetch_meteo_forecast(zones: pd.DataFrame) -> pd.DataFrame:
+def fetch_meteo_forecast(spots: pd.DataFrame) -> pd.DataFrame:
     frames: list[pd.DataFrame] = []
 
-    for zones_batch in chunk_dataframe(zones, BATCH_SIZE):
-        params = build_request_params_for_batch(zones_batch)
+    for spots_batch in chunk_dataframe(spots, BATCH_SIZE):
+        params = build_request_params_for_batch(spots_batch)
         payload = get_with_retry(params)
-        items = normalize_batch_payload(payload, expected_count=len(zones_batch))
+        items = normalize_batch_payload(payload, expected_count=len(spots_batch))
 
-        for (_, zone), item in zip(zones_batch.iterrows(), items):
+        for (_, spot), item in zip(spots_batch.iterrows(), items):
             hourly = hourly_payload_to_dataframe(item)
             daily = aggregate_daily(hourly)
-            daily = add_zone_metadata(daily, zone)
+            daily = add_spot_metadata(daily, spot)
             frames.append(daily)
 
         time.sleep(SLEEP_BETWEEN_BATCHES_SEC)
@@ -163,4 +163,4 @@ def fetch_meteo_forecast(zones: pd.DataFrame) -> pd.DataFrame:
     if not frames:
         raise ValueError("Aucune donnée météo forecast produite")
 
-    return pd.concat(frames, ignore_index=True).sort_values(["zone_id", "date"]).reset_index(drop=True)
+    return pd.concat(frames, ignore_index=True).sort_values(["spot_id", "date"]).reset_index(drop=True)

@@ -11,7 +11,7 @@ import xarray as xr
 CMEMS_USERNAME = os.environ["CMEMS_USERNAME"]
 CMEMS_PASSWORD = os.environ["CMEMS_PASSWORD"]
 FORECAST_DAYS = int(os.environ.get("FORECAST_DAYS", "7"))
-ZONE_MARGIN_DEG = float(os.environ.get("ZONE_MARGIN_DEG", "0.03"))
+SPOT_MARGIN_DEG = float(os.environ.get("SPOT_MARGIN_DEG", "0.03"))
 
 
 def forecast_window() -> tuple[str, str]:
@@ -20,23 +20,23 @@ def forecast_window() -> tuple[str, str]:
     return now.isoformat(), end.isoformat()
 
 
-def zone_bbox(zone: pd.Series, margin_deg: float = ZONE_MARGIN_DEG) -> dict:
+def spot_bbox(spot: pd.Series, margin_deg: float = SPOT_MARGIN_DEG) -> dict:
     return {
-        "minimum_longitude": float(zone["longitude_min"]) - margin_deg,
-        "maximum_longitude": float(zone["longitude_max"]) + margin_deg,
-        "minimum_latitude": float(zone["latitude_min"]) - margin_deg,
-        "maximum_latitude": float(zone["latitude_max"]) + margin_deg,
+        "minimum_longitude": float(spot["longitude_min"]) - margin_deg,
+        "maximum_longitude": float(spot["longitude_max"]) + margin_deg,
+        "minimum_latitude": float(spot["latitude_min"]) - margin_deg,
+        "maximum_latitude": float(spot["latitude_max"]) + margin_deg,
     }
 
 
 def open_cmems_dataset(
     dataset_id: str,
     variables: list[str] | None,
-    zone: pd.Series,
+    spot: pd.Series,
     select_surface: bool = False,
 ) -> xr.Dataset:
     start_dt, end_dt = forecast_window()
-    bbox = zone_bbox(zone)
+    bbox = spot_bbox(spot)
 
     ds = copernicusmarine.open_dataset(
         dataset_id=dataset_id,
@@ -76,16 +76,16 @@ def maybe_select_surface(ds: xr.Dataset) -> xr.Dataset:
     return ds
 
 
-def add_zone_metadata(df: pd.DataFrame, zone: pd.Series, point: xr.Dataset | None = None) -> pd.DataFrame:
+def add_spot_metadata(df: pd.DataFrame, spot: pd.Series, point: xr.Dataset | None = None) -> pd.DataFrame:
     out = df.copy()
-    out["zone_id"] = zone["zone_id"]
-    out["zone_name"] = zone["zone_name"]
-    out["latitude_min"] = float(zone["latitude_min"])
-    out["latitude_max"] = float(zone["latitude_max"])
-    out["longitude_min"] = float(zone["longitude_min"])
-    out["longitude_max"] = float(zone["longitude_max"])
-    out["lat_center"] = float(zone["lat_center"])
-    out["lon_center"] = float(zone["lon_center"])
+    out["spot_id"] = spot["spot_id"]
+    out["spot_name"] = spot["spot_name"]
+    out["latitude_min"] = float(spot["latitude_min"])
+    out["latitude_max"] = float(spot["latitude_max"])
+    out["longitude_min"] = float(spot["longitude_min"])
+    out["longitude_max"] = float(spot["longitude_max"])
+    out["lat_center"] = float(spot["lat_center"])
+    out["lon_center"] = float(spot["lon_center"])
 
     if point is not None:
         if "lat" in point.coords:
@@ -104,8 +104,8 @@ def add_zone_metadata(df: pd.DataFrame, zone: pd.Series, point: xr.Dataset | Non
 def base_group_cols(df: pd.DataFrame) -> list[str]:
     cols = [
         "date",
-        "zone_id",
-        "zone_name",
+        "spot_id",
+        "spot_name",
         "latitude_min",
         "latitude_max",
         "longitude_min",
