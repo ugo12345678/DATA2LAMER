@@ -19,7 +19,7 @@ from pscripts.spots import load_spots
 
 MODEL_VERSION = os.environ.get("MODEL_VERSION", "v1")
 PREDICTION_SOURCE = os.environ.get("PREDICTION_SOURCE", "github_action")
-FORECAST_THREAD_WORKERS = int(os.environ.get("FORECAST_THREAD_WORKERS", "3"))
+FORECAST_THREAD_WORKERS = int(os.environ.get("FORECAST_THREAD_WORKERS", "4"))
 
 
 def sanitize_value(v):
@@ -96,7 +96,17 @@ def prepare_inference_matrix(features_df: pd.DataFrame, raw_feature_cols: list[s
     return X_raw
 
 
-def build_prediction_rows(df: pd.DataFrame, preds) -> list[dict]:
+def compute_data_completeness(X_raw: pd.DataFrame) -> pd.Series:
+    """Ratio of non-NaN features per row (0.0 to 1.0)."""
+    total = X_raw.shape[1]
+    if total == 0:
+        return pd.Series(0.0, index=X_raw.index)
+    return X_raw.notna().sum(axis=1) / total
+
+
+def build_prediction_rows(
+    df: pd.DataFrame, preds, completeness: pd.Series,
+) -> list[dict]:
     run_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     forecast_time = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0).isoformat()
 
@@ -114,6 +124,7 @@ def build_prediction_rows(df: pd.DataFrame, preds) -> list[dict]:
                 "model_version": MODEL_VERSION,
                 "run_id": run_id,
                 "source": PREDICTION_SOURCE,
+                "data_completeness": round(float(completeness.iloc[i]), 4),
                 "features_json": feature_snapshots[i],
             }
         )
@@ -130,18 +141,58 @@ def upsert_predictions(rows: list[dict]) -> None:
         return
 
     client = get_supabase()
-    (
+
+    # Fetch existing completeness for the same keys to avoid overwriting better data
+    spot_ids = list({r["spot_id"] for r in rows})
+    target_times = list({r["target_time"] for r in rows})
+
+    existing = (
         client.table("forecast_predictions")
-        .upsert(rows, on_conflict="spot_id,target_time,model_version")
+        .select("spot_id,target_time,model_version,data_completeness")
+        .in_("spot_id", spot_ids)
+        .in_("target_time", target_times)
+        .eq("model_version", MODEL_VERSION)
         .execute()
     )
+
+    existing_map: dict[tuple, float] = {}
+    for e in existing.data or []:
+        key = (e["spot_id"], e["target_time"], e["model_version"])
+        existing_map[key] = e.get("data_completeness") or 0.0
+
+    rows_to_upsert = []
+    skipped = 0
+    for r in rows:
+        key = (r["spot_id"], r["target_time"], r["model_version"])
+        prev = existing_map.get(key)
+        if prev is not None and r["data_completeness"] < prev:
+            skipped += 1
+            continue
+        rows_to_upsert.append(r)
+
+    if skipped:
+        print(f"[INFO] {skipped} lignes ignorées (completeness inférieure à l'existant)")
+
+    if not rows_to_upsert:
+        print("[INFO] Aucune ligne à upserter (données existantes déjà meilleures).")
+        return
+
+    (
+        client.table("forecast_predictions")
+        .upsert(rows_to_upsert, on_conflict="spot_id,target_time,model_version")
+        .execute()
+    )
+    print(f"[OK] {len(rows_to_upsert)} lignes upsertées sur {len(rows)} candidates")
 
 
 def main() -> None:
     spots = load_spots()
     print(f"Spots chargées: {len(spots)}")
 
-    with ThreadPoolExecutor(max_workers=FORECAST_THREAD_WORKERS) as executor:
+    # Load model in parallel with data fetching for speed
+    with ThreadPoolExecutor(max_workers=FORECAST_THREAD_WORKERS + 1) as executor:
+        model_future = executor.submit(load_model_from_r2)
+
         futures = {
             executor.submit(fetch_phy_forecast, spots): "phy",
             executor.submit(fetch_wav_forecast, spots): "wav",
@@ -170,6 +221,8 @@ def main() -> None:
             except Exception as exc:
                 print(f"[ERROR] Échec récupération {source.upper()} forecast: {exc}")
 
+        artifact = model_future.result()
+
     if phy_df.empty or wav_df.empty or bgc_df.empty or meteo_df.empty:
         raise RuntimeError("Un des jeux de données forecast est vide après récupération (échec possible).")
 
@@ -182,7 +235,6 @@ def main() -> None:
     print(f"Feature frame rows: {len(features_df)}")
     print(f"Feature frame cols: {len(features_df.columns)}")
 
-    artifact = load_model_from_r2()
     print("Type artefact chargé:", type(artifact))
     if isinstance(artifact, dict):
         print("Clés artefact:", list(artifact.keys()))
@@ -190,12 +242,14 @@ def main() -> None:
     preprocessor, model, raw_feature_cols = resolve_model_artifact(artifact)
 
     X_raw = prepare_inference_matrix(features_df, raw_feature_cols)
+    completeness = compute_data_completeness(X_raw)
     X_t = preprocessor.transform(X_raw)
 
     print(f"Shape X_transformed: {X_t.shape}")
+    print(f"Data completeness: min={completeness.min():.2%} mean={completeness.mean():.2%} max={completeness.max():.2%}")
     preds = model.predict(X_t)
 
-    rows = build_prediction_rows(features_df, preds)
+    rows = build_prediction_rows(features_df, preds, completeness)
     upsert_predictions(rows)
 
     print(f"[OK] rows upsertées: {len(rows)}")

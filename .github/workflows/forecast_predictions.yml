@@ -2,8 +2,11 @@ name: Forecast Predictions
 
 on:
   schedule:
-    # Une exécution quotidienne, tôt le matin (UTC). Ajuster 4 pour 05h CET/06h CEST.
-    - cron: "0 4 * * *"
+    # 3 exécutions par jour pour capter la meilleure disponibilité CMEMS
+    # 06h UTC (matin) - 12h UTC (midi, après publication forecasts CMEMS) - 18h UTC (soir)
+    - cron: "0 6 * * *"
+    - cron: "0 12 * * *"
+    - cron: "0 18 * * *"
   workflow_dispatch:
 
 jobs:
@@ -30,6 +33,8 @@ jobs:
 
       MODEL_VERSION: v1
       PREDICTION_SOURCE: github_action
+      FORECAST_THREAD_WORKERS: 4
+      CMEMS_MAX_WORKERS: 10
 
       # optionnel
       STATIC_FEATURES_PATH: ""
