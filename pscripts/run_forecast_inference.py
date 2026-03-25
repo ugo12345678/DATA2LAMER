@@ -143,15 +143,17 @@ def upsert_predictions(rows: list[dict]) -> None:
     client = get_supabase()
 
     # Fetch existing completeness for the same keys to avoid overwriting better data
-    spot_ids = list({r["spot_id"] for r in rows})
-    target_times = list({r["target_time"] for r in rows})
+    target_times = sorted({r["target_time"] for r in rows})
+    t_min, t_max = target_times[0], target_times[-1]
 
+    # Query existing predictions using date range only (spot_ids list too large for URL)
     existing = (
         client.table("forecast_predictions")
         .select("spot_id,target_time,model_version,data_completeness")
-        .in_("spot_id", spot_ids)
-        .in_("target_time", target_times)
+        .gte("target_time", t_min)
+        .lte("target_time", t_max)
         .eq("model_version", MODEL_VERSION)
+        .limit(10000)
         .execute()
     )
 
@@ -177,12 +179,19 @@ def upsert_predictions(rows: list[dict]) -> None:
         print("[INFO] Aucune ligne à upserter (données existantes déjà meilleures).")
         return
 
-    (
-        client.table("forecast_predictions")
-        .upsert(rows_to_upsert, on_conflict="spot_id,target_time,model_version")
-        .execute()
-    )
-    print(f"[OK] {len(rows_to_upsert)} lignes upsertées sur {len(rows)} candidates")
+    # Upsert par batch pour éviter les limites de taille de requête
+    BATCH_SIZE = 500
+    total_upserted = 0
+    for i in range(0, len(rows_to_upsert), BATCH_SIZE):
+        batch = rows_to_upsert[i : i + BATCH_SIZE]
+        (
+            client.table("forecast_predictions")
+            .upsert(batch, on_conflict="spot_id,target_time,model_version")
+            .execute()
+        )
+        total_upserted += len(batch)
+
+    print(f"[OK] {total_upserted} lignes upsertées sur {len(rows)} candidates ({total_upserted // BATCH_SIZE + 1} batch(es))")
 
 
 def main() -> None:
