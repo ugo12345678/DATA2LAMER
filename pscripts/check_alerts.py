@@ -303,21 +303,40 @@ def send_email(to_email: str, subject: str, html_body: str) -> bool:
         return False
 
 
-def log_alert_trigger(alert_id: str, spot_ids: list[str], sent: bool) -> None:
-    """Enregistre le déclenchement dans Supabase pour éviter les doublons."""
+def log_alert_notification(alert_id: str, notification_type: str, sent: bool) -> None:
+    """Enregistre la notification envoyée dans alert_notifications."""
     client = get_supabase()
     try:
-        client.table("alert_triggers").upsert(
-            {
-                "alert_id": alert_id,
-                "triggered_at": datetime.now(timezone.utc).isoformat(),
-                "spot_ids": spot_ids,
-                "email_sent": sent,
-            },
-            on_conflict="alert_id,triggered_date",
-        ).execute()
+        client.table("alert_notifications").insert({
+            "alert_id": alert_id,
+            "notification_type": notification_type,
+            "sent_at": datetime.now(timezone.utc).isoformat(),
+            "status": "sent" if sent else "failed",
+        }).execute()
     except Exception as exc:
-        print(f"  [WARN] Échec log trigger: {exc}")
+        print(f"  [WARN] Échec log notification: {exc}")
+
+
+def already_notified_today(alert_ids: list[str]) -> set[str]:
+    """Retourne les alert_id qui ont déjà reçu une notification email aujourd'hui."""
+    if not alert_ids:
+        return set()
+    client = get_supabase()
+    today_start = datetime.now(timezone.utc).strftime("%Y-%m-%d") + "T00:00:00+00:00"
+    try:
+        resp = (
+            client.table("alert_notifications")
+            .select("alert_id")
+            .in_("alert_id", alert_ids)
+            .eq("notification_type", "email")
+            .eq("status", "sent")
+            .gte("sent_at", today_start)
+            .execute()
+        )
+        return {row["alert_id"] for row in (resp.data or [])}
+    except Exception as exc:
+        print(f"[WARN] Échec vérification notifications existantes: {exc}")
+        return set()
 
 
 # ─── Main ────────────────────────────────────────────────────────────────────
@@ -349,12 +368,24 @@ def main() -> None:
     user_emails = load_user_emails(all_user_ids)
     print(f"Emails récupérés: {len(user_emails)}")
 
+    # Vérifier quelles alertes ont déjà été notifiées aujourd'hui
+    all_alert_ids = [a["id"] for a in alerts]
+    notified_today = already_notified_today(all_alert_ids)
+    if notified_today:
+        print(f"Alertes déjà notifiées aujourd'hui (skip): {len(notified_today)}")
+
     # Évaluer chaque alerte
     emails_sent = 0
     alerts_triggered = 0
+    skipped_already_sent = 0
 
     for alert in alerts:
         alert_name = alert.get("name", alert["id"])
+
+        if alert["id"] in notified_today:
+            skipped_already_sent += 1
+            print(f"[{alert_name}] Déjà notifié aujourd'hui, skip.")
+            continue
         forecast_day = alert.get("forecast_day") or 0
         target_date = (
             datetime.now(timezone.utc) + timedelta(days=forecast_day)
@@ -397,16 +428,16 @@ def main() -> None:
         user_email = user_emails.get(alert["user_id"])
         if not user_email:
             print(f"  [WARN] Pas d'email trouvé pour user {alert['user_id']}")
-            log_alert_trigger(alert["id"], triggered_spot_ids, sent=False)
+            log_alert_notification(alert["id"], "email", sent=False)
             continue
 
         subject, html = format_alert_email(alert, triggered, condition_types)
         sent = send_email(user_email, subject, html)
         if sent:
             emails_sent += 1
-        log_alert_trigger(alert["id"], triggered_spot_ids, sent=sent)
+        log_alert_notification(alert["id"], "email", sent=sent)
 
-    print(f"\n=== RÉSUMÉ: {alerts_triggered} alerte(s) déclenchée(s), {emails_sent} email(s) envoyé(s) ===")
+    print(f"\n=== RÉSUMÉ: {alerts_triggered} déclenchée(s), {emails_sent} email(s), {skipped_already_sent} ignorée(s) (déjà envoyé) ===")
 
     # Générer le rapport JSON pour l'artefact GitHub Actions
     report = {
@@ -414,6 +445,7 @@ def main() -> None:
         "alerts_active": len(alerts),
         "alerts_triggered": alerts_triggered,
         "emails_sent": emails_sent,
+        "skipped_already_sent": skipped_already_sent,
         "users_concerned": len(all_user_ids),
         "spots_checked": len(all_spot_ids),
     }
