@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 
 import pandas as pd
 
+from pscripts.cmems_runtime import forecast_today
 from pscripts.feature_builder import build_feature_frame
 from pscripts.forecast_bgc import fetch_bgc_forecast
 from pscripts.forecast_meteo import fetch_meteo_forecast
@@ -129,6 +130,20 @@ def build_prediction_rows(
             }
         )
     return rows
+
+
+def delete_past_forecasts() -> None:
+    """Delete forecast predictions with a target_time before today."""
+    client = get_supabase()
+    today_utc = forecast_today().isoformat()
+    resp = (
+        client.table("forecast_predictions")
+        .delete()
+        .lt("target_time", today_utc)
+        .execute()
+    )
+    deleted = len(resp.data) if resp.data else 0
+    print(f"[CLEANUP] {deleted} anciennes prédictions supprimées (target_time < {today_utc})")
 
 
 def upsert_predictions(rows: list[dict]) -> None:
@@ -259,6 +274,7 @@ def main() -> None:
     preds = model.predict(X_t)
 
     rows = build_prediction_rows(features_df, preds, completeness)
+    delete_past_forecasts()
     upsert_predictions(rows)
 
     print(f"[OK] rows upsertées: {len(rows)}")

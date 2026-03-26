@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import copernicusmarine
 import pandas as pd
@@ -11,13 +12,22 @@ import xarray as xr
 CMEMS_USERNAME = os.environ["CMEMS_USERNAME"]
 CMEMS_PASSWORD = os.environ["CMEMS_PASSWORD"]
 FORECAST_DAYS = int(os.environ.get("FORECAST_DAYS", "5"))
+FORECAST_TIMEZONE = os.environ.get("FORECAST_TIMEZONE", "Europe/Paris")
 SPOT_MARGIN_DEG = float(os.environ.get("SPOT_MARGIN_DEG", "0.03"))
 
 
+def forecast_today() -> datetime:
+    """Return today's midnight in UTC, based on the local forecast timezone."""
+    tz = ZoneInfo(FORECAST_TIMEZONE)
+    local_now = datetime.now(tz)
+    local_midnight = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+    return local_midnight.astimezone(timezone.utc)
+
+
 def forecast_window() -> tuple[str, str]:
-    now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
-    end = now + timedelta(days=FORECAST_DAYS)
-    return now.isoformat(), end.isoformat()
+    start = forecast_today()
+    end = start + timedelta(days=FORECAST_DAYS)
+    return start.isoformat(), end.isoformat()
 
 
 def spot_bbox(spot: pd.Series, margin_deg: float = SPOT_MARGIN_DEG) -> dict:

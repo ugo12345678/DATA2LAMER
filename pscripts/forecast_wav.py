@@ -28,10 +28,10 @@ def _pick_available_vars(ds) -> dict[str, str]:
 
 
 def _fetch_wav_spot(spot: pd.Series) -> pd.DataFrame | None:
-    from datetime import datetime, timedelta, timezone
-    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
+    from datetime import timedelta
+    from pscripts.cmems_runtime import forecast_today
+    today = forecast_today()
     end_want = today + timedelta(days=4)
-    # On passe la période directement à open_cmems_dataset
     ds = open_cmems_dataset(
         dataset_id=DATASET_ID,
         variables=None,
