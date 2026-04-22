@@ -1,0 +1,191 @@
+[
+  {
+    "id": "legifrance_spearfishing",
+    "kind": "html",
+    "source_type": "LEGIFRANCE",
+    "source_priority": 1,
+    "authority_name": "Legifrance",
+    "title": "Code rural et de la peche maritime - Article R921-90",
+    "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000029978119"
+  },
+  {
+    "id": "legifrance_diving",
+    "kind": "html",
+    "source_type": "LEGIFRANCE",
+    "source_priority": 1,
+    "authority_name": "Legifrance",
+    "title": "Code du sport - Article A322-71",
+    "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000025393881"
+  },
+  {
+    "id": "ministere_peche_loisir",
+    "kind": "html",
+    "source_type": "MINISTERE_MER",
+    "source_priority": 2,
+    "authority_name": "Ministere de la Mer",
+    "title": "Peche de loisir en mer",
+    "url": "https://www.mer.gouv.fr/peche-de-loisir-en-mer"
+  },
+  {
+    "id": "dirm_namo_capture_rules",
+    "kind": "html+pdf",
+    "source_type": "DIRM",
+    "source_priority": 2,
+    "authority_name": "DIRM Nord Atlantique Manche Ouest",
+    "title": "DIRM NAMO - Tailles minimales et rappels peche de loisir",
+    "url": "https://www.dirm.nord-atlantique-manche-ouest.developpement-durable.gouv.fr/peche-de-loisir-taille-minimale-de-capture-et-a288.html?lang=fr"
+  },
+  {
+    "id": "dirm_namo_bar_lieu_quota_2026",
+    "kind": "html",
+    "source_type": "DIRM",
+    "source_priority": 2,
+    "authority_name": "DIRM Nord Atlantique Manche Ouest",
+    "title": "Pêche de loisir du bar, du lieu jaune et du maquereau en Bretagne et Pays de la Loire",
+    "url": "https://www.dirm.nord-atlantique-manche-ouest.developpement-durable.gouv.fr/peche-de-loisir-du-bar-du-lieu-jaune-et-du-a585.html"
+  },
+  {
+    "id": "dirm_namo_bretagne_synthese_pdf",
+    "kind": "pdf",
+    "source_type": "DIRM",
+    "source_priority": 2,
+    "authority_name": "DIRM Nord Atlantique Manche Ouest",
+    "title": "Synthese reglementation peche de loisir Bretagne",
+    "url": "https://www.dirm.nord-atlantique-manche-ouest.developpement-durable.gouv.fr/IMG/pdf/reglementation_peche_loisir_bretagne_2025_01_cle51df32.pdf"
+  },
+  {
+    "id": "dirm_namo_pdl_synthese_pdf",
+    "kind": "pdf",
+    "source_type": "DIRM",
+    "source_priority": 2,
+    "authority_name": "DIRM Nord Atlantique Manche Ouest",
+    "title": "Synthese reglementation peche de loisir Pays de la Loire",
+    "url": "https://www.dirm.nord-atlantique-manche-ouest.developpement-durable.gouv.fr/IMG/pdf/reglementation_peche_loisir_pdl_2025_01_cle0432e1.pdf"
+  },
+  {
+    "id": "dirm_memn_bar_lieu_2026",
+    "kind": "html",
+    "source_type": "DIRM",
+    "source_priority": 2,
+    "authority_name": "DIRM Manche Est Mer du Nord",
+    "title": "Bar et lieu jaune - Regles applicables en 2026",
+    "url": "https://www.dirm.memn.developpement-durable.gouv.fr/bar-et-lieu-jaune-regles-applicables-en-2026-pour-a1334.html"
+  },
+  {
+    "id": "dirm_memn_reglementation_hub",
+    "kind": "html+pdf+links",
+    "source_type": "DIRM",
+    "source_priority": 2,
+    "authority_name": "DIRM Manche Est Mer du Nord",
+    "title": "Reglementation europeenne et nationale - peche de loisir",
+    "url": "https://www.dirm.memn.developpement-durable.gouv.fr/reglementation-europeenne-et-nationale-r399.html"
+  },
+  {
+    "id": "dirm_memn_tailles_minimales",
+    "kind": "html+pdf",
+    "source_type": "DIRM",
+    "source_priority": 2,
+    "authority_name": "DIRM Manche Est Mer du Nord",
+    "title": "Tailles minimales de capture",
+    "url": "https://www.dirm.memn.developpement-durable.gouv.fr/tailles-minimales-de-capture-a839.html"
+  },
+  {
+    "id": "dirm_memn_especes_sensibles_2026",
+    "kind": "html",
+    "source_type": "DIRM",
+    "source_priority": 2,
+    "authority_name": "DIRM Manche Est Mer du Nord",
+    "title": "Enregistrement des pecheurs de loisir et declaration des captures",
+    "url": "https://www.dirm.memn.developpement-durable.gouv.fr/enregistrement-des-pecheurs-de-loisir-et-a1304.html"
+  },
+  {
+    "id": "dirm_mediterranee_peche_loisir_hub",
+    "kind": "html+pdf+links",
+    "source_type": "DIRM",
+    "source_priority": 2,
+    "authority_name": "DIRM Mediterranee",
+    "title": "Peche de loisir",
+    "url": "https://www.dirm.mediterranee.developpement-durable.gouv.fr/peche-de-loisir-r18.html"
+  },
+  {
+    "id": "dirm_mediterranee_reglementation_loisir_hub",
+    "kind": "html+pdf+links",
+    "source_type": "DIRM",
+    "source_priority": 2,
+    "authority_name": "DIRM Mediterranee",
+    "title": "Reglementation de la peche maritime de loisir",
+    "url": "https://www.dirm.mediterranee.developpement-durable.gouv.fr/reglementation-de-la-peche-maritime-de-loisir-r74.html"
+  },
+  {
+    "id": "dirm_mediterranee_tailles_capture",
+    "kind": "html+pdf",
+    "source_type": "DIRM",
+    "source_priority": 2,
+    "authority_name": "DIRM Mediterranee",
+    "title": "Reglementation et tailles minimales de capture des especes",
+    "url": "https://www.dirm.mediterranee.developpement-durable.gouv.fr/reglementation-et-tailles-minimales-de-capture-des-a249.html"
+  },
+  {
+    "id": "dirm_mediterranee_reglementation_2026",
+    "kind": "html+pdf",
+    "source_type": "DIRM",
+    "source_priority": 2,
+    "authority_name": "DIRM Mediterranee",
+    "title": "Nouvelle reglementation peche de loisir 2026",
+    "url": "https://www.dirm.mediterranee.developpement-durable.gouv.fr/peche-de-loisir-la-nouvelle-reglementation-a-a3259.html"
+  },
+  {
+    "id": "dirm_mediterranee_pnm_golfe_lion",
+    "kind": "html+pdf",
+    "source_type": "DIRM",
+    "source_priority": 2,
+    "authority_name": "DIRM Mediterranee",
+    "title": "Reglementation particuliere peche de loisir Parc naturel marin du golfe du Lion",
+    "url": "https://www.dirm.mediterranee.developpement-durable.gouv.fr/reglementation-particuliere-de-la-peche-de-loisir-a3164.html"
+  },
+  {
+    "id": "dirm_mediterranee_calanques",
+    "kind": "html+pdf",
+    "source_type": "DIRM",
+    "source_priority": 2,
+    "authority_name": "DIRM Mediterranee",
+    "title": "Modalites d'exercice peche de loisir Parc national des Calanques",
+    "url": "https://www.dirm.mediterranee.developpement-durable.gouv.fr/modalites-d-exercice-declaration-d-activite-et-de-a3163.html"
+  },
+  {
+    "id": "dirm_sud_atlantique_thon_rouge",
+    "kind": "html+pdf",
+    "source_type": "DIRM",
+    "source_priority": 2,
+    "authority_name": "DIRM Sud Atlantique",
+    "title": "Les autorisations de peche thon rouge de loisir",
+    "url": "https://www.dirm.sud-atlantique.developpement-durable.gouv.fr/les-autorisations-de-peche-thon-rouge-de-loisir-a1271.html"
+  },
+  {
+    "id": "dirm_sud_atlantique_thon_rouge_2025",
+    "kind": "html+pdf",
+    "source_type": "DIRM",
+    "source_priority": 2,
+    "authority_name": "DIRM Sud Atlantique",
+    "title": "Peche de loisir du thon rouge - Autorisation administrative 2025",
+    "url": "https://www.dirm.sud-atlantique.developpement-durable.gouv.fr/peche-de-loisir-du-thon-rouge-autorisation-a1576.html"
+  },
+  {
+    "id": "ministere_report_obligations_2026",
+    "kind": "html",
+    "source_type": "MINISTERE_MER",
+    "source_priority": 2,
+    "authority_name": "Ministere de la Transition ecologique et de la Mer",
+    "title": "Report de l'obligation d'enregistrement et declaration des pecheurs de loisir",
+    "url": "https://www.ecologie.gouv.fr/presse/report-lobligation-denregistrement-declaration-pecheurs-loisir"
+  },
+  {
+    "id": "data_gouv_zones_peche_sous_marine_reglementee",
+    "kind": "html",
+    "source_type": "DATA_GOUV",
+    "source_priority": 3,
+    "authority_name": "data.gouv.fr / DDTM Finistere",
+    "title": "Zones ou la peche sous-marine de loisir est reglementee",
+    "url": "https://www.data.gouv.fr/datasets/zones-ou-la-peche-sous-marine-de-loisir-est-reglementee-1/"
+  }
+]

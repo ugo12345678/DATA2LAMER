@@ -1,0 +1,58 @@
+name: Sync Geospatial Regulations Links
+
+on:
+  workflow_run:
+    workflows: ["Forecast Predictions"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  sync-regulation-links:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY || secrets.SUPABASE_KEY }}
+
+      # Optionnels si ton schema differe
+      REG_SPOTS_TABLE: ${{ vars.REG_SPOTS_TABLE || 'spots' }}
+      REG_ZONES_TABLE: ${{ vars.REG_ZONES_TABLE || 'zones' }}
+      REG_ENABLE_ZONES: ${{ vars.REG_ENABLE_ZONES || 'true' }}
+      REG_SOURCE_CATALOG_FILE: data/regulations/source_endpoints.json
+      REG_STATIC_LEGIFRANCE_RULES_FILE: data/regulations/static_legifrance_rules.json
+      REG_GENERATED_RULES_FILE: data/regulations/generated_rules.json
+      REG_GEOSPATIAL_RULES_FILE: data/regulations/generated_rules.json
+      REG_ENABLE_PDF_OCR: "true"
+      REG_OCR_LANG: "fra+eng"
+      REG_OCR_MIN_TEXT_CHARS: "900"
+      REG_OCR_MAX_PAGES: "8"
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install OCR system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-fra poppler-utils
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-forecast.txt
+
+      - name: Run geospatial regulations unit tests
+        run: python -m unittest tests/test_sync_regulation_geospatial_links.py tests/test_build_regulations_feed.py -v
+
+      - name: Build regulations feed from official sources
+        run: python -m pscripts.regulations.build_regulations_feed
+
+      - name: Sync regulations links to spots/zones
+        run: python -m pscripts.sync_regulation_geospatial_links

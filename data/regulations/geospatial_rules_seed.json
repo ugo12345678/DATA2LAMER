@@ -1,0 +1,29 @@
+[
+  {
+    "rule_key": "species.dicentrarchus-labrax.min-size.namo",
+    "rule_type": "MIN_SIZE",
+    "title": "Taille minimale de capture du bar commun",
+    "description": "Bar commun (Dicentrarchus labrax): taille minimale 42 cm pour la peche de loisir en mer du Nord, Manche et Atlantique.",
+    "legal_reference": "Arrete ministeriel du 26 octobre 2012 modifie (rappel DIRM NAMO)",
+    "metric_type": "SIZE_MIN_CM",
+    "metric_value": 42,
+    "metric_unit": "cm",
+    "species_common_name": "Bar commun",
+    "species_scientific_name": "Dicentrarchus labrax",
+    "source": {
+      "source_type": "DIRM",
+      "source_priority": 2,
+      "authority_name": "DIRM NAMO",
+      "source_url": "https://www.dirm.nord-atlantique-manche-ouest.developpement-durable.gouv.fr/IMG/pdf/taille_minimale_de_captures_des_poissons_crustaces_et_mollusques_01-2026_cle71aa21.pdf",
+      "title": "DIRM NAMO - Tailles minimales des captures en peche de loisir",
+      "effective_date": "2026-01-19"
+    },
+    "zone": {
+      "zone_code": "APP_ZONES_UNION",
+      "zone_name": "Union geospatiale des zones de l'application",
+      "strategy": "APP_ZONES_UNION"
+    },
+    "needs_manual_review": true,
+    "notes": "Zone geographique operationnelle basee sur les spots de l'app, a valider juridiquement."
+  }
+]

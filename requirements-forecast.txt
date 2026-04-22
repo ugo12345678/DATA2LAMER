@@ -9,3 +9,6 @@ pandas
 requests
 supabase
 numpy
+pypdf
+pdf2image
+pytesseract
