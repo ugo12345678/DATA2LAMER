@@ -19,6 +19,9 @@ ZONES_TABLE = os.environ.get("REG_ZONES_TABLE", "zones")
 ENABLE_ZONES = os.environ.get("REG_ENABLE_ZONES", "true").lower() == "true"
 ROW_FETCH_LIMIT = int(os.environ.get("REG_FETCH_LIMIT", "10000"))
 CENTROID_DELTA_DEG = float(os.environ.get("REG_CENTROID_DELTA_DEG", "0.01"))
+ALLOW_SPOTS_FALLBACK_FOR_ZONE_UNION = (
+    os.environ.get("REG_ALLOW_SPOTS_FALLBACK_FOR_ZONE_UNION", "true").lower() == "true"
+)
 
 
 @dataclass(frozen=True)
@@ -88,18 +91,45 @@ def collect_geojson_lon_lat_pairs(node: Any, out: list[tuple[float, float]]) -> 
 
 
 def extract_bbox_from_geojson_dict(payload: dict[str, Any]) -> BBox | None:
+    bbox_values = payload.get("bbox")
+    if isinstance(bbox_values, list) and len(bbox_values) >= 4:
+        lon_min = as_float(bbox_values[0])
+        lat_min = as_float(bbox_values[1])
+        lon_max = as_float(bbox_values[2])
+        lat_max = as_float(bbox_values[3])
+        if None not in (lat_min, lat_max, lon_min, lon_max):
+            return normalize_bbox(lat_min, lat_max, lon_min, lon_max)
+
     coordinates = payload.get("coordinates")
-    if coordinates is None:
-        return None
+    if coordinates is None and isinstance(payload.get("geometry"), dict):
+        coordinates = payload["geometry"].get("coordinates")
 
-    pairs: list[tuple[float, float]] = []
-    collect_geojson_lon_lat_pairs(coordinates, pairs)
-    if not pairs:
-        return None
+    if coordinates is not None:
+        pairs: list[tuple[float, float]] = []
+        collect_geojson_lon_lat_pairs(coordinates, pairs)
+        if not pairs:
+            return None
 
-    lons = [p[0] for p in pairs]
-    lats = [p[1] for p in pairs]
-    return normalize_bbox(min(lats), max(lats), min(lons), max(lons))
+        lons = [p[0] for p in pairs]
+        lats = [p[1] for p in pairs]
+        return normalize_bbox(min(lats), max(lats), min(lons), max(lons))
+
+    features = payload.get("features")
+    if isinstance(features, list):
+        all_pairs: list[tuple[float, float]] = []
+        for feature in features:
+            if not isinstance(feature, dict):
+                continue
+            geometry = feature.get("geometry")
+            if isinstance(geometry, dict):
+                collect_geojson_lon_lat_pairs(geometry.get("coordinates"), all_pairs)
+
+        if all_pairs:
+            lons = [p[0] for p in all_pairs]
+            lats = [p[1] for p in all_pairs]
+            return normalize_bbox(min(lats), max(lats), min(lons), max(lons))
+
+    return None
 
 
 def extract_bbox_from_wkt(text: str) -> BBox | None:
@@ -141,6 +171,14 @@ def extract_bbox_from_geometry_columns(row: dict[str, Any]) -> BBox | None:
             bbox = extract_bbox_from_wkt(payload)
             if bbox:
                 return bbox
+
+        if isinstance(payload, list):
+            pairs: list[tuple[float, float]] = []
+            collect_geojson_lon_lat_pairs(payload, pairs)
+            if pairs:
+                lons = [p[0] for p in pairs]
+                lats = [p[1] for p in pairs]
+                return normalize_bbox(min(lats), max(lats), min(lons), max(lons))
 
         if isinstance(payload, dict):
             bbox = extract_bbox_from_geojson_dict(payload)
@@ -318,9 +356,15 @@ def resolve_rule_zone_bbox(seed_rule: dict[str, Any], spots_envelope: BBox, zone
         return spots_envelope
 
     if strategy in {"ZONES_ENVELOPE", "APP_ZONES_UNION"}:
-        if not zones_envelope:
-            raise ValueError("La strategie zone exige des zones app avec bbox exploitable.")
-        return zones_envelope
+        if zones_envelope:
+            return zones_envelope
+        if ALLOW_SPOTS_FALLBACK_FOR_ZONE_UNION:
+            print(
+                f"[WARN] rule={seed_rule.get('rule_key')} strategy={strategy} "
+                "sans zones exploitables -> fallback SPOTS_ENVELOPE."
+            )
+            return spots_envelope
+        raise ValueError("La strategie zone exige des zones app avec bbox exploitable.")
 
     lat_min = as_float(zone.get("lat_min"))
     lat_max = as_float(zone.get("lat_max"))

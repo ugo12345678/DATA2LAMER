@@ -154,6 +154,7 @@ Optionnelles:
 - `REG_SPOTS_TABLE` (defaut `spots`)
 - `REG_ZONES_TABLE` (defaut `zones`)
 - `REG_ENABLE_ZONES` (`true`/`false`, defaut `true`)
+- `REG_ALLOW_SPOTS_FALLBACK_FOR_ZONE_UNION` (`true`/`false`, defaut `true`)
 - `REG_SOURCE_CATALOG_FILE` (defaut `data/regulations/source_endpoints.json`)
 - `REG_STATIC_LEGIFRANCE_RULES_FILE` (defaut `data/regulations/static_legifrance_rules.json`)
 - `REG_GENERATED_RULES_FILE` (defaut `data/regulations/generated_rules.json`)

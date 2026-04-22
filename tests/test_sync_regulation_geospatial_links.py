@@ -45,6 +45,41 @@ class SyncRegulationGeospatialLinksTests(unittest.TestCase):
         self.assertIsNotNone(bbox)
         self.assertEqual(bbox, BBox(lat_min=48.50, lat_max=48.70, lon_min=-4.70, lon_max=-4.50))
 
+    def test_extract_bbox_from_geometry_columns_feature_collection(self) -> None:
+        row = {
+            "id": "z2",
+            "polygon": {
+                "type": "FeatureCollection",
+                "features": [
+                    {
+                        "type": "Feature",
+                        "geometry": {
+                            "type": "Polygon",
+                            "coordinates": [
+                                [[-4.8, 48.3], [-4.6, 48.3], [-4.6, 48.5], [-4.8, 48.5], [-4.8, 48.3]]
+                            ],
+                        },
+                    }
+                ],
+            },
+        }
+
+        bbox = extract_bbox_from_geometry_columns(row)
+
+        self.assertIsNotNone(bbox)
+        self.assertEqual(bbox, BBox(lat_min=48.3, lat_max=48.5, lon_min=-4.8, lon_max=-4.6))
+
+    def test_extract_bbox_from_geometry_columns_list_coordinates(self) -> None:
+        row = {
+            "id": "z3",
+            "polygon": [[[-4.4, 47.9], [-4.2, 47.9], [-4.2, 48.1], [-4.4, 48.1], [-4.4, 47.9]]],
+        }
+
+        bbox = extract_bbox_from_geometry_columns(row)
+
+        self.assertIsNotNone(bbox)
+        self.assertEqual(bbox, BBox(lat_min=47.9, lat_max=48.1, lon_min=-4.4, lon_max=-4.2))
+
     def test_bbox_overlap(self) -> None:
         a = normalize_bbox(48.0, 49.0, -5.0, -4.0)
         b = normalize_bbox(48.5, 49.5, -4.5, -3.5)
@@ -126,6 +161,15 @@ class SyncRegulationGeospatialLinksTests(unittest.TestCase):
             resolve_rule_zone_bbox(rule_custom, spots_envelope, zones_envelope),
             BBox(lat_min=43.0, lat_max=44.0, lon_min=5.0, lon_max=6.0),
         )
+
+    def test_resolve_rule_zone_bbox_fallbacks_to_spots_when_zones_missing(self) -> None:
+        spots_envelope = BBox(lat_min=47.0, lat_max=49.0, lon_min=-5.0, lon_max=-3.0)
+        rule_zones = {
+            "rule_key": "r4",
+            "zone": {"strategy": "APP_ZONES_UNION"},
+        }
+
+        self.assertEqual(resolve_rule_zone_bbox(rule_zones, spots_envelope, None), spots_envelope)
 
 
 if __name__ == "__main__":
