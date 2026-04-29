@@ -192,9 +192,9 @@ python -m pscripts.regulations.build_regulations_feed
 Variables utiles:
 
 - `REG_LEGIFRANCE_FETCH_LIVE`: tente de lire Legifrance en direct, defaut `false`. Le site peut renvoyer `403`; le socle statique versionne est alors le chemin fiable.
-- `REG_AI_MODEL`: modele utilise pour l'audit IA, defaut `gpt-4o-mini`.
-- `REG_AI_BASE_URL`: endpoint OpenAI-compatible, defaut `https://api.openai.com/v1`. Les endpoints locaux (`localhost`, `127.0.0.1`) ne demandent pas de cle API.
-- `REG_AI_MAX_RULES`: nombre maximal de regles envoyees a l'audit IA, defaut `120`.
+- `REG_AI_MODEL`: modele utilise pour l'audit IA, defaut `openrouter/free`.
+- `REG_AI_BASE_URL`: endpoint OpenAI-compatible, defaut `https://openrouter.ai/api/v1`. Les endpoints locaux (`localhost`, `127.0.0.1`) ne demandent pas de cle API.
+- `REG_AI_MAX_RULES`: nombre maximal de regles envoyees a l'audit IA, defaut `80`.
 - L'audit IA renseigne `confidence_score`, `confidence_source="ai"` et `confidence_reason` sur les regles auditees. Les regles avec un score IA inferieur a `0.65` repassent en revue manuelle.
 - `REG_ENABLE_PDF_OCR`: active/desactive l'OCR des PDF peu lisibles, defaut `false`.
 

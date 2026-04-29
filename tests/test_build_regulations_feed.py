@@ -309,9 +309,9 @@ class BuildRegulationsFeedTests(unittest.TestCase):
         )
 
     def test_ai_remote_endpoint_uses_api_key_header(self) -> None:
-        self.assertFalse(ai_base_url_is_local("https://api.openai.com/v1"))
+        self.assertFalse(ai_base_url_is_local("https://openrouter.ai/api/v1"))
         self.assertEqual(
-            ai_request_headers("https://api.openai.com/v1", api_key="test-key")["Authorization"],
+            ai_request_headers("https://openrouter.ai/api/v1", api_key="test-key")["Authorization"],
             "Bearer test-key",
         )
 
