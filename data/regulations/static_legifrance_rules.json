@@ -1,0 +1,58 @@
+[
+  {
+    "source_id": "legifrance_spearfishing",
+    "rule_key": "spearfishing.fr.min-age.fusil-harpon",
+    "rule_type": "SPEARFISHING_GENERAL",
+    "title": "Age minimum pour la peche sous-marine au fusil-harpon",
+    "description": "L'exercice de la peche sous-marine au moyen d'un fusil-harpon est interdit aux personnes agees de moins de seize ans.",
+    "legal_reference": "Code rural et de la peche maritime - Article R921-90",
+    "metric_type": "AGE_MIN_YEARS",
+    "metric_value": 16,
+    "metric_unit": "ans",
+    "species_common_name": null,
+    "species_scientific_name": null,
+    "source": {
+      "source_type": "LEGIFRANCE",
+      "source_priority": 1,
+      "authority_name": "Legifrance",
+      "source_url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000029978119",
+      "title": "Code rural et de la peche maritime - Article R921-90",
+      "effective_date": "2026-04-22"
+    },
+    "zone": {
+      "zone_code": "APP_ZONES_UNION",
+      "zone_name": "Union geospatiale des zones de l'application",
+      "strategy": "APP_ZONES_UNION"
+    },
+    "needs_manual_review": false,
+    "notes": "Socle statique Legifrance utilise en fallback si la recuperation live est bloquee."
+  },
+  {
+    "source_id": "legifrance_diving",
+    "rule_key": "diving.fr.code-sport.section-a322-71",
+    "rule_type": "DIVING_GENERAL",
+    "title": "Cadre de securite des etablissements de plongee subaquatique",
+    "description": "Les dispositions de la presente section s'appliquent aux etablissements mentionnes a l'article L. 322-2 qui organisent la pratique de la plongee subaquatique.",
+    "legal_reference": "Code du sport - Article A322-71",
+    "metric_type": null,
+    "metric_value": null,
+    "metric_unit": null,
+    "species_common_name": null,
+    "species_scientific_name": null,
+    "source": {
+      "source_type": "LEGIFRANCE",
+      "source_priority": 1,
+      "authority_name": "Legifrance",
+      "source_url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000025393881",
+      "title": "Code du sport - Article A322-71",
+      "effective_date": "2026-04-22"
+    },
+    "zone": {
+      "zone_code": "APP_ZONES_UNION",
+      "zone_name": "Union geospatiale des zones de l'application",
+      "strategy": "APP_ZONES_UNION"
+    },
+    "needs_manual_review": false,
+    "notes": "Socle statique Legifrance utilise en fallback si la recuperation live est bloquee."
+  }
+]

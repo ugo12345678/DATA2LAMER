@@ -133,3 +133,77 @@ data/models/
 data/reports/
 
 data/predictions/
+
+## Recuperation des reglementations
+
+Le module `pscripts.regulations.build_regulations_feed` genere un fichier de regles depuis les sources officielles referencees dans `data/regulations/source_endpoints.json`.
+
+```bash
+python -m pscripts.regulations.build_regulations_feed
+```
+
+Sorties generees:
+
+- `data/regulations/generated_rules.json`: regles triees, dedoublonnees et pretes pour la synchro Supabase.
+- `data/regulations/quality_report.json`: rapport de coherence, doublons probables, conflits de metriques et sources a verifier.
+- `data/regulations/generated_rule_candidates.json`: candidats d'extraction avec statut, confiance, payload structure et audit IA eventuel.
+- `data/regulations/source_documents_manifest.json`: manifeste des documents sources, citations et chunks/preuves utilises par les regles.
+
+Modele de donnees:
+
+- `reg_source_documents` conserve les documents sources hashes.
+- `reg_document_chunks` conserve les extraits/preuves.
+- `reg_rule_candidates` conserve les propositions brutes a trier.
+- `reg_rule_citations` relie chaque regle a sa preuve.
+- `reg_species` et `reg_rule_species` normalisent les especes.
+- `reg_rules.status` distingue `needs_review`, `published` et les futurs statuts d'archivage.
+
+Pour synchroniser ces regles avec Supabase, creer d'abord les tables avec:
+
+```bash
+db/sql/2026-04-22_regulations_geospatial_tables.sql
+db/sql/2026-04-29_regulations_audit_model_v2.sql
+```
+
+Puis lancer:
+
+```bash
+python -m pscripts.sync_regulation_geospatial_links
+```
+
+Audit IA optionnel avec OpenAI:
+
+```powershell
+$env:REG_ENABLE_AI_AUDIT="true"
+$env:OPENAI_API_KEY="..."
+python -m pscripts.regulations.build_regulations_feed
+```
+
+Audit IA gratuit en local avec Ollama:
+
+```powershell
+ollama pull llama3.1
+$env:REG_ENABLE_AI_AUDIT="true"
+$env:REG_AI_BASE_URL="http://localhost:11434/v1"
+$env:REG_AI_MODEL="llama3.1"
+python -m pscripts.regulations.build_regulations_feed
+```
+
+Variables utiles:
+
+- `REG_LEGIFRANCE_FETCH_LIVE`: tente de lire Legifrance en direct, defaut `false`. Le site peut renvoyer `403`; le socle statique versionne est alors le chemin fiable.
+- `REG_AI_MODEL`: modele utilise pour l'audit IA, defaut `gpt-4o-mini`.
+- `REG_AI_BASE_URL`: endpoint OpenAI-compatible, defaut `https://api.openai.com/v1`. Les endpoints locaux (`localhost`, `127.0.0.1`) ne demandent pas de cle API.
+- `REG_AI_MAX_RULES`: nombre maximal de regles envoyees a l'audit IA, defaut `120`.
+- L'audit IA renseigne `confidence_score`, `confidence_source="ai"` et `confidence_reason` sur les regles auditees. Les regles avec un score IA inferieur a `0.65` repassent en revue manuelle.
+- `REG_ENABLE_PDF_OCR`: active/desactive l'OCR des PDF peu lisibles, defaut `false`.
+
+OCR PDF optionnel:
+
+```powershell
+pip install pdf2image pytesseract
+$env:REG_ENABLE_PDF_OCR="true"
+python -m pscripts.regulations.build_regulations_feed
+```
+
+L'OCR necessite aussi les binaires systeme Poppler (`pdftoppm`) et Tesseract installes sur la machine.

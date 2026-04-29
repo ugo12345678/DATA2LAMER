@@ -63,6 +63,10 @@ data/processed/
 data/models/
 data/reports/
 data/predictions/
+data/regulations/generated_rules.json
+data/regulations/quality_report.json
+data/regulations/generated_rule_candidates.json
+data/regulations/source_documents_manifest.json
 
 # Keep config/reference data
 !data/
