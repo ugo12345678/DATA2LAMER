@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from pscripts.regulations.build_regulations_feed import (
     SourceRecord,
     ai_base_url_is_local,
+    ai_base_url_is_openrouter,
     ai_request_headers,
     apply_ai_audit_to_rules,
     ai_message_content_to_text,
     build_base_rule,
+    build_ai_request_payload,
     build_rule_candidates,
     build_source_documents_manifest,
     build_quality_report,
@@ -27,10 +30,13 @@ from pscripts.regulations.build_regulations_feed import (
     html_to_text,
     parse_legifrance_diving_rules,
     parse_legifrance_spearfishing_rules,
+    parse_ai_response_payload,
     parse_ministere_spearfishing_rules,
     normalize_ai_confidence_scores,
     resolve_rule_zone,
+    run_ai_rule_audit,
     should_try_pdf_ocr,
+    summarize_ai_response_payload,
     validate_rule_set,
 )
 
@@ -465,6 +471,125 @@ class BuildRegulationsFeedTests(unittest.TestCase):
     def test_extract_first_json_object_rejects_empty_response(self) -> None:
         with self.assertRaises(ValueError):
             extract_first_json_object("")
+
+    def test_parse_ai_response_payload_accepts_choices_message_content(self) -> None:
+        parsed = parse_ai_response_payload(
+            {
+                "id": "chatcmpl-123",
+                "object": "chat.completion",
+                "choices": [
+                    {
+                        "index": 0,
+                        "finish_reason": "stop",
+                        "message": {
+                            "role": "assistant",
+                            "content": "{\"issues\": [], \"confidence_scores\": []}",
+                        },
+                    }
+                ],
+            }
+        )
+
+        self.assertEqual(parsed["issues"], [])
+
+    def test_parse_ai_response_payload_accepts_openrouter_responses_output_shape(self) -> None:
+        parsed = parse_ai_response_payload(
+            {
+                "id": "resp_123",
+                "object": "response",
+                "status": "completed",
+                "output": [
+                    {
+                        "type": "message",
+                        "content": [
+                            {"type": "output_text", "text": "{\"issues\": [], \"confidence_scores\": []}"}
+                        ],
+                    }
+                ],
+            }
+        )
+
+        self.assertEqual(parsed["confidence_scores"], [])
+
+    def test_parse_ai_response_payload_surfaces_provider_error(self) -> None:
+        with self.assertRaisesRegex(ValueError, "rate_limit_exceeded"):
+            parse_ai_response_payload(
+                {
+                    "error": {
+                        "code": "rate_limit_exceeded",
+                        "message": "Rate limit exceeded",
+                    }
+                }
+            )
+
+    def test_summarize_ai_response_payload_includes_error_details(self) -> None:
+        summary = summarize_ai_response_payload(
+            {"object": "chat.completion", "error": {"code": 503, "message": "No provider available"}}
+        )
+
+        self.assertIn("object=chat.completion", summary)
+        self.assertIn("error_code=503", summary)
+
+    @patch("pscripts.regulations.build_regulations_feed.AI_API_KEY", "test-key")
+    @patch("pscripts.regulations.build_regulations_feed.AI_MODEL", "openrouter/free")
+    @patch("pscripts.regulations.build_regulations_feed.AI_BASE_URL", "https://openrouter.ai/api/v1")
+    @patch("pscripts.regulations.build_regulations_feed.ENABLE_AI_AUDIT", True)
+    @patch("pscripts.regulations.build_regulations_feed.requests.post")
+    def test_run_ai_rule_audit_retries_openrouter_without_response_format(self, mock_post) -> None:
+        class MockResponse:
+            def __init__(self, status_code: int, payload: dict[str, object]) -> None:
+                self.status_code = status_code
+                self._payload = payload
+                self.text = ""
+
+            def json(self) -> dict[str, object]:
+                return self._payload
+
+        mock_post.side_effect = [
+            MockResponse(200, {"status": "completed"}),
+            MockResponse(
+                200,
+                {
+                    "choices": [
+                        {
+                            "index": 0,
+                            "finish_reason": "stop",
+                            "message": {
+                                "role": "assistant",
+                                "content": "{\"issues\": [], \"confidence_scores\": []}",
+                            },
+                        }
+                    ]
+                },
+            ),
+        ]
+
+        rule = build_base_rule(
+            rule_key="species.bar.quota.namo",
+            rule_type="QUOTA",
+            title="Quota bar",
+            description="Bar : 2 captures par jour",
+            source=self.dirm_source,
+            source_url="https://www.dirm.example/a.pdf",
+            legal_reference=None,
+            metric_type="QUOTA_MAX_UNITS",
+            metric_value=2,
+            metric_unit="captures/jour",
+            species_common_name="bar",
+            species_scientific_name=None,
+            needs_manual_review=False,
+            notes="",
+        )
+
+        audit = run_ai_rule_audit([rule])
+
+        self.assertEqual(audit["status"], "ok")
+        self.assertEqual(audit["attempt_count"], 2)
+        self.assertEqual(mock_post.call_count, 2)
+        first_payload = mock_post.call_args_list[0].kwargs["json"]
+        second_payload = mock_post.call_args_list[1].kwargs["json"]
+        self.assertIn("response_format", first_payload)
+        self.assertNotIn("response_format", second_payload)
 
     def test_apply_ai_audit_sets_confidence_score(self) -> None:
         rule = build_base_rule(

@@ -2350,11 +2350,129 @@ def ai_base_url_is_local(base_url: str = AI_BASE_URL) -> bool:
     return parsed.hostname in LOCAL_AI_HOSTS
 
 
+def ai_base_url_is_openrouter(base_url: str = AI_BASE_URL) -> bool:
+    parsed = urlparse(base_url)
+    return (parsed.hostname or "").endswith("openrouter.ai")
+
+
 def ai_request_headers(base_url: str = AI_BASE_URL, api_key: str | None = AI_API_KEY) -> dict[str, str]:
     headers = {"Content-Type": "application/json"}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     return headers
+
+
+def build_ai_request_payload(prompt_payload: dict[str, Any], strict_json: bool = True) -> dict[str, Any]:
+    system_content = (
+        "Tu es un auditeur qualite de donnees juridiques maritimes. "
+        "Tu reponds en JSON strict."
+    )
+    if not strict_json:
+        system_content = (
+            "Tu es un auditeur qualite de donnees juridiques maritimes. "
+            "Retourne un unique objet JSON brut, sans commentaire avant ou apres."
+        )
+
+    request_payload = {
+        "model": AI_MODEL,
+        "temperature": 0,
+        "messages": [
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": json.dumps(prompt_payload, ensure_ascii=False)},
+        ],
+    }
+    if strict_json:
+        request_payload["response_format"] = {"type": "json_object"}
+    return request_payload
+
+
+def summarize_ai_response_payload(payload: Any) -> str:
+    if isinstance(payload, dict):
+        parts: list[str] = []
+        keys = sorted(str(key) for key in payload.keys())
+        if keys:
+            parts.append(f"keys={','.join(keys[:8])}")
+        object_type = payload.get("object")
+        if object_type:
+            parts.append(f"object={object_type}")
+        status = payload.get("status")
+        if status:
+            parts.append(f"status={status}")
+        error = payload.get("error")
+        if isinstance(error, dict):
+            code = error.get("code")
+            message = normalize_spaces(str(error.get("message") or ""))[:220]
+            if code not in (None, ""):
+                parts.append(f"error_code={code}")
+            if message:
+                parts.append(f"error={message}")
+        return "; ".join(parts) or "payload dict vide"
+    if isinstance(payload, list):
+        return f"payload list[{len(payload)}]"
+    return f"payload {type(payload).__name__}"
+
+
+def parse_ai_response_payload(response_payload: Any) -> dict[str, Any]:
+    if not isinstance(response_payload, dict):
+        raise ValueError(f"Reponse IA non supportee ({summarize_ai_response_payload(response_payload)}).")
+
+    error = response_payload.get("error")
+    if isinstance(error, dict):
+        message = normalize_spaces(str(error.get("message") or "Erreur fournisseur IA."))[:300]
+        code = error.get("code")
+        if code not in (None, ""):
+            raise ValueError(f"Erreur IA {code}: {message}")
+        raise ValueError(f"Erreur IA: {message}")
+
+    choices = response_payload.get("choices")
+    if isinstance(choices, list) and choices:
+        first_choice = choices[0] if isinstance(choices[0], dict) else {}
+        if not isinstance(first_choice, dict):
+            raise ValueError("Reponse IA avec choices invalides.")
+
+        finish_reason = first_choice.get("finish_reason")
+        if finish_reason == "error":
+            raise ValueError(f"Generation IA en erreur ({summarize_ai_response_payload(response_payload)}).")
+
+        text_candidates = [
+            ai_message_content_to_text((first_choice.get("message") or {}).get("content")),
+            ai_message_content_to_text((first_choice.get("delta") or {}).get("content")),
+        ]
+        if isinstance(first_choice.get("text"), str):
+            text_candidates.append(str(first_choice.get("text")))
+
+        tool_calls = (first_choice.get("message") or {}).get("tool_calls") or []
+        if isinstance(tool_calls, list) and tool_calls:
+            arguments = ((tool_calls[0].get("function") or {}).get("arguments"))
+            if isinstance(arguments, str):
+                text_candidates.append(arguments)
+
+        for candidate in text_candidates:
+            if candidate.strip():
+                return extract_first_json_object(candidate)
+
+        raise ValueError("Reponse IA sans contenu exploitable dans choices[0].")
+
+    output = response_payload.get("output")
+    if isinstance(output, list):
+        output_texts: list[str] = []
+        for item in output:
+            if not isinstance(item, dict):
+                continue
+            content_text = ai_message_content_to_text(item.get("content"))
+            if content_text:
+                output_texts.append(content_text)
+                continue
+            if isinstance(item.get("text"), str):
+                output_texts.append(str(item.get("text")))
+        if output_texts:
+            return extract_first_json_object("\n".join(output_texts))
+
+    top_level_content = ai_message_content_to_text(response_payload.get("content"))
+    if top_level_content:
+        return extract_first_json_object(top_level_content)
+
+    raise ValueError(f"Reponse IA sans contenu exploitable ({summarize_ai_response_payload(response_payload)}).")
 
 
 def run_ai_rule_audit(rules: list[dict[str, Any]]) -> dict[str, Any]:
@@ -2398,55 +2516,55 @@ def run_ai_rule_audit(rules: list[dict[str, Any]]) -> dict[str, Any]:
         },
         "rules": [compact_rule_for_ai(rule) for rule in sample_rules],
     }
-    request_payload = {
-        "model": AI_MODEL,
-        "temperature": 0,
-        "response_format": {"type": "json_object"},
-        "messages": [
-            {
-                "role": "system",
-                "content": "Tu es un auditeur qualite de donnees juridiques maritimes. Tu reponds en JSON strict.",
-            },
-            {"role": "user", "content": json.dumps(prompt_payload, ensure_ascii=False)},
-        ],
-    }
-    try:
-        response = requests.post(
-            f"{AI_BASE_URL}/chat/completions",
-            headers=ai_request_headers(),
-            json=request_payload,
-            timeout=AI_TIMEOUT_SECONDS,
-        )
-        response.raise_for_status()
-        response_payload = response.json()
-        choices = response_payload.get("choices")
-        if not isinstance(choices, list) or not choices:
-            raise ValueError("Reponse IA sans choices.")
-        message = choices[0].get("message") or {}
-        content = ai_message_content_to_text(message.get("content"))
-        if not content:
-            tool_calls = message.get("tool_calls") or []
-            if isinstance(tool_calls, list) and tool_calls:
-                arguments = ((tool_calls[0].get("function") or {}).get("arguments"))
-                content = arguments if isinstance(arguments, str) else ""
-        parsed = extract_first_json_object(content)
-    except Exception as exc:  # pragma: no cover - external provider variability
-        return {
-            "enabled": True,
-            "status": "failed",
-            "model": AI_MODEL,
-            "error": str(exc),
-            "rules_sent": len(sample_rules),
-            "issues": [],
-        }
+    attempt_specs = [{"strict_json": True, "label": "strict_json"}]
+    if ai_base_url_is_openrouter():
+        attempt_specs.append({"strict_json": False, "label": "openrouter_plain_json_retry"})
+
+    last_error: Exception | None = None
+    last_response_summary = ""
+    for attempt_index, attempt in enumerate(attempt_specs, start=1):
+        response_payload: Any = None
+        try:
+            response = requests.post(
+                f"{AI_BASE_URL}/chat/completions",
+                headers=ai_request_headers(),
+                json=build_ai_request_payload(prompt_payload, strict_json=bool(attempt["strict_json"])),
+                timeout=AI_TIMEOUT_SECONDS,
+            )
+            try:
+                response_payload = response.json()
+            except ValueError:
+                response_payload = {"raw_text": response.text[:800]}
+
+            if response.status_code >= 400:
+                raise ValueError(
+                    f"HTTP {response.status_code} - {summarize_ai_response_payload(response_payload)}"
+                )
+
+            parsed = parse_ai_response_payload(response_payload)
+            return {
+                "enabled": True,
+                "status": "ok",
+                "model": AI_MODEL,
+                "rules_sent": len(sample_rules),
+                "issues": normalize_ai_issues(parsed),
+                "confidence_scores": normalize_ai_confidence_scores(parsed),
+                "attempt_count": attempt_index,
+            }
+        except Exception as exc:  # pragma: no cover - external provider variability
+            last_error = exc
+            if response_payload is not None:
+                last_response_summary = summarize_ai_response_payload(response_payload)
 
     return {
         "enabled": True,
-        "status": "ok",
+        "status": "failed",
         "model": AI_MODEL,
+        "error": str(last_error) if last_error else "Echec IA inconnu.",
+        "response_summary": last_response_summary,
         "rules_sent": len(sample_rules),
-        "issues": normalize_ai_issues(parsed),
-        "confidence_scores": normalize_ai_confidence_scores(parsed),
+        "issues": [],
+        "attempt_count": len(attempt_specs),
     }
 
 
