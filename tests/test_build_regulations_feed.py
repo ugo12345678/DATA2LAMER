@@ -7,12 +7,14 @@ from pscripts.regulations.build_regulations_feed import (
     ai_base_url_is_local,
     ai_request_headers,
     apply_ai_audit_to_rules,
+    ai_message_content_to_text,
     build_base_rule,
     build_rule_candidates,
     build_source_documents_manifest,
     build_quality_report,
     deduplicate_rules,
     enrich_rule_for_publication,
+    extract_first_json_object,
     extract_dirm_closure_rules,
     extract_dirm_protected_species_rules,
     extract_dirm_quota_rules,
@@ -442,6 +444,27 @@ class BuildRegulationsFeedTests(unittest.TestCase):
 
         self.assertEqual(scores["r1"]["confidence_score"], 0.87)
         self.assertIn("Source officielle", scores["r1"]["confidence_reason"])
+
+    def test_ai_message_content_to_text_accepts_openrouter_style_parts(self) -> None:
+        text = ai_message_content_to_text(
+            [
+                {"type": "output_text", "text": "{\"issues\": [], \"confidence_scores\": []}"},
+            ]
+        )
+
+        self.assertIn("\"issues\": []", text)
+
+    def test_extract_first_json_object_accepts_wrapped_json(self) -> None:
+        parsed = extract_first_json_object(
+            "Voici le resultat:\n{\"issues\": [], \"confidence_scores\": {\"r1\": {\"confidence_score\": 0.8}}}\nMerci."
+        )
+
+        self.assertIn("issues", parsed)
+        self.assertIn("confidence_scores", parsed)
+
+    def test_extract_first_json_object_rejects_empty_response(self) -> None:
+        with self.assertRaises(ValueError):
+            extract_first_json_object("")
 
     def test_apply_ai_audit_sets_confidence_score(self) -> None:
         rule = build_base_rule(

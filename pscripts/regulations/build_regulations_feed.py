@@ -2275,6 +2275,76 @@ def normalize_ai_confidence_scores(payload: Any) -> dict[str, dict[str, Any]]:
     return normalized
 
 
+def ai_message_content_to_text(content: Any) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+                continue
+            if not isinstance(item, dict):
+                continue
+            text_value = item.get("text")
+            if isinstance(text_value, str):
+                parts.append(text_value)
+                continue
+            if item.get("type") == "output_text" and isinstance(item.get("text"), str):
+                parts.append(str(item.get("text")))
+        return "\n".join(part for part in parts if part).strip()
+    if isinstance(content, dict):
+        text_value = content.get("text")
+        if isinstance(text_value, str):
+            return text_value
+    return ""
+
+
+def extract_first_json_object(text: str) -> dict[str, Any]:
+    stripped = text.strip()
+    if not stripped:
+        raise ValueError("Reponse IA vide.")
+
+    try:
+        parsed = json.loads(stripped)
+        if isinstance(parsed, dict):
+            return parsed
+    except json.JSONDecodeError:
+        pass
+
+    start = stripped.find("{")
+    while start != -1:
+        depth = 0
+        in_string = False
+        escape = False
+        for index in range(start, len(stripped)):
+            char = stripped[index]
+            if in_string:
+                if escape:
+                    escape = False
+                elif char == "\\":
+                    escape = True
+                elif char == "\"":
+                    in_string = False
+                continue
+            if char == "\"":
+                in_string = True
+                continue
+            if char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    candidate = stripped[start : index + 1]
+                    parsed = json.loads(candidate)
+                    if isinstance(parsed, dict):
+                        return parsed
+                    break
+        start = stripped.find("{", start + 1)
+
+    raise ValueError("Aucun objet JSON exploitable dans la reponse IA.")
+
+
 def ai_base_url_is_local(base_url: str = AI_BASE_URL) -> bool:
     parsed = urlparse(base_url)
     return parsed.hostname in LOCAL_AI_HOSTS
@@ -2349,8 +2419,17 @@ def run_ai_rule_audit(rules: list[dict[str, Any]]) -> dict[str, Any]:
         )
         response.raise_for_status()
         response_payload = response.json()
-        content = response_payload["choices"][0]["message"]["content"]
-        parsed = json.loads(content)
+        choices = response_payload.get("choices")
+        if not isinstance(choices, list) or not choices:
+            raise ValueError("Reponse IA sans choices.")
+        message = choices[0].get("message") or {}
+        content = ai_message_content_to_text(message.get("content"))
+        if not content:
+            tool_calls = message.get("tool_calls") or []
+            if isinstance(tool_calls, list) and tool_calls:
+                arguments = ((tool_calls[0].get("function") or {}).get("arguments"))
+                content = arguments if isinstance(arguments, str) else ""
+        parsed = extract_first_json_object(content)
     except Exception as exc:  # pragma: no cover - external provider variability
         return {
             "enabled": True,
