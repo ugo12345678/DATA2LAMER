@@ -24,17 +24,22 @@ from pscripts.regulations.build_regulations_feed import (
     extract_dirm_size_rules,
     extract_pdf_urls_from_html,
     extract_pdf_url_from_html,
+    extract_practice_restriction_rules,
     extract_relevant_html_links_from_html,
     extract_sensitive_species_declaration_rules,
     find_sentence,
     html_to_text,
+    infer_rule_validity,
     parse_legifrance_diving_rules,
     parse_legifrance_spearfishing_rules,
     parse_ai_response_payload,
+    parse_french_date_to_iso,
     parse_ministere_spearfishing_rules,
     normalize_ai_confidence_scores,
+    quote_matches_source_context,
     resolve_rule_zone,
     run_ai_rule_audit,
+    source_context_window,
     should_try_pdf_ocr,
     summarize_ai_response_payload,
     validate_rule_set,
@@ -208,6 +213,15 @@ class BuildRegulationsFeedTests(unittest.TestCase):
         species = sorted(rule["species_common_name"] for rule in declaration_rules)
         self.assertEqual(species, ["bar", "dorade rose", "lieu jaune"])
         self.assertTrue(all(rule["rule_type"] == "LOCAL_RESTRICTION" for rule in declaration_rules))
+
+    def test_extract_practice_restriction_rules_detects_general_practice_rule(self) -> None:
+        text = "La vente des produits issus de la peche maritime de loisir est interdite."
+
+        rules = extract_practice_restriction_rules(self.dirm_source, "https://www.dirm.example/page.html", text)
+
+        self.assertEqual(len(rules), 1)
+        self.assertEqual(rules[0]["rule_type"], "PRACTICE_RULE")
+        self.assertIn("vente", rules[0]["description"].lower())
 
     def test_extract_relevant_html_links_from_html(self) -> None:
         html = """
@@ -443,6 +457,8 @@ class BuildRegulationsFeedTests(unittest.TestCase):
                         "rule_key": "r1",
                         "confidence_score": 87,
                         "confidence_reason": "Source officielle et valeur claire.",
+                        "valid_from": "2026-05-01",
+                        "effective_date_quote": "Le present arrete entre en vigueur le 1er mai 2026.",
                     }
                 ]
             }
@@ -450,6 +466,7 @@ class BuildRegulationsFeedTests(unittest.TestCase):
 
         self.assertEqual(scores["r1"]["confidence_score"], 0.87)
         self.assertIn("Source officielle", scores["r1"]["confidence_reason"])
+        self.assertEqual(scores["r1"]["valid_from"], "2026-05-01")
 
     def test_ai_message_content_to_text_accepts_openrouter_style_parts(self) -> None:
         text = ai_message_content_to_text(
@@ -471,6 +488,60 @@ class BuildRegulationsFeedTests(unittest.TestCase):
     def test_extract_first_json_object_rejects_empty_response(self) -> None:
         with self.assertRaises(ValueError):
             extract_first_json_object("")
+
+    def test_parse_french_date_to_iso_accepts_textual_and_numeric_dates(self) -> None:
+        self.assertEqual(parse_french_date_to_iso("1er mai 2026"), "2026-05-01")
+        self.assertEqual(parse_french_date_to_iso("30/04/2026"), "2026-04-30")
+        self.assertEqual(parse_french_date_to_iso("31 mars", default_year=2026), "2026-03-31")
+
+    def test_infer_rule_validity_from_explicit_effective_date(self) -> None:
+        validity = infer_rule_validity("Le present arrete entre en vigueur le 1er mai 2026.")
+
+        self.assertEqual(validity["valid_from"], "2026-05-01")
+        self.assertEqual(validity["effective_date_source"], "parser")
+        self.assertIn("entre en vigueur", validity["effective_date_quote"])
+
+    def test_infer_rule_validity_from_source_title_year(self) -> None:
+        validity = infer_rule_validity("", source_title="Bar et lieu jaune - Regles applicables en 2026")
+
+        self.assertEqual(validity["valid_from"], "2026-01-01")
+        self.assertEqual(validity["valid_to"], "2026-12-31")
+        self.assertEqual(validity["effective_date_source"], "parser_title")
+
+    def test_infer_rule_validity_does_not_use_unrelated_body_year_for_day_month_only(self) -> None:
+        validity = infer_rule_validity(
+            "Article L. 921-1 cree en 2007. La peche des crabes au moyen de casier est interdite du 15 mars au 15 avril."
+        )
+
+        self.assertEqual(validity, {})
+
+    def test_infer_rule_validity_ignores_public_consultation_period(self) -> None:
+        validity = infer_rule_validity(
+            "Vu les observations formulees lors de la consultation du public realisee du 12 novembre au 2 decembre 2024 inclus. "
+            "Aucun specimen de lieu jaune ne peut etre capture et detenu du 1er janvier au 30 avril.",
+            source_url="https://www.example.gouv.fr/joe_20260411.pdf",
+        )
+
+        self.assertEqual(validity["valid_from"], "2026-01-01")
+        self.assertEqual(validity["valid_to"], "2026-04-30")
+
+    def test_source_context_window_keeps_anchor_with_more_context(self) -> None:
+        context = source_context_window(
+            "Intro. Bar commun (Dicentrarchus labrax) : 42 cm. Fin du tableau.",
+            "Bar commun (Dicentrarchus labrax) : 42 cm",
+            max_chars=80,
+        )
+
+        self.assertIn("Bar commun", context)
+        self.assertIn("Intro.", context)
+
+    def test_quote_matches_source_context_accepts_normalized_whitespace(self) -> None:
+        self.assertTrue(
+            quote_matches_source_context(
+                "Bar commun : 42 cm",
+                "Tableau 2026  Bar commun :   42 cm  facade NAMO",
+            )
+        )
 
     def test_parse_ai_response_payload_accepts_choices_message_content(self) -> None:
         parsed = parse_ai_response_payload(
@@ -629,6 +700,88 @@ class BuildRegulationsFeedTests(unittest.TestCase):
         self.assertTrue(rule["needs_manual_review"])
         self.assertIn("ai_low_confidence", rule["quality_flags"])
 
+    def test_apply_ai_audit_keeps_selected_quote_only_if_from_source_context(self) -> None:
+        rule = build_base_rule(
+            rule_key="species.bar.quota.namo",
+            rule_type="QUOTA",
+            title="Quota bar",
+            description="Bar : 2 captures par jour",
+            source=self.dirm_source,
+            source_url="https://www.dirm.example/a.pdf",
+            legal_reference=None,
+            metric_type="QUOTA_MAX_UNITS",
+            metric_value=2,
+            metric_unit="captures/jour",
+            species_common_name="bar",
+            species_scientific_name=None,
+            needs_manual_review=False,
+            notes="",
+            source_excerpt="Bar : 2 captures par jour",
+            source_context="Reglementation peche de loisir. Bar : 2 captures par jour. Zone NAMO.",
+        )
+
+        apply_ai_audit_to_rules(
+            [rule],
+            {
+                "status": "ok",
+                "issues": [],
+                "confidence_scores": {
+                    "species.bar.quota.namo": {
+                        "confidence_score": 0.83,
+                        "confidence_reason": "Extrait clair.",
+                        "selected_quote": "Bar : 2 captures par jour",
+                        "selected_quote_reason": "Phrase la plus normative.",
+                    }
+                },
+            },
+        )
+
+        self.assertEqual(rule["selected_quote"], "Bar : 2 captures par jour")
+        self.assertEqual(rule["selected_quote_source"], "ai")
+        self.assertEqual(rule["selected_quote_reason"], "Phrase la plus normative.")
+
+    def test_apply_ai_audit_accepts_effective_date_only_with_source_quote(self) -> None:
+        rule = build_base_rule(
+            rule_key="species.bar.quota.namo",
+            rule_type="QUOTA",
+            title="Quota bar",
+            description="Bar : 2 captures par jour",
+            source=self.dirm_source,
+            source_url="https://www.dirm.example/a.pdf",
+            legal_reference=None,
+            metric_type="QUOTA_MAX_UNITS",
+            metric_value=2,
+            metric_unit="captures/jour",
+            species_common_name="bar",
+            species_scientific_name=None,
+            needs_manual_review=False,
+            notes="",
+            source_context="Le present arrete entre en vigueur le 1er mai 2026. Bar : 2 captures par jour.",
+        )
+        rule["valid_from"] = None
+        rule["effective_date_source"] = None
+
+        apply_ai_audit_to_rules(
+            [rule],
+            {
+                "status": "ok",
+                "issues": [],
+                "confidence_scores": {
+                    "species.bar.quota.namo": {
+                        "confidence_score": 0.82,
+                        "confidence_reason": "Source claire.",
+                        "valid_from": "2026-05-01",
+                        "effective_date_quote": "Le present arrete entre en vigueur le 1er mai 2026.",
+                        "effective_date_reason": "Date d'effet explicite.",
+                    }
+                },
+            },
+        )
+
+        self.assertEqual(rule["valid_from"], "2026-05-01")
+        self.assertEqual(rule["effective_date_source"], "ai")
+        self.assertIn("entre en vigueur", rule["effective_date_quote"])
+
     def test_enrich_rule_for_publication_adds_audit_fields(self) -> None:
         rule = build_base_rule(
             rule_key="species.bar.min-size.namo",
@@ -656,6 +809,8 @@ class BuildRegulationsFeedTests(unittest.TestCase):
         self.assertEqual(enriched["confidence_source"], "heuristic")
         self.assertEqual(enriched["species"][0]["scientific_name"], "Dicentrarchus labrax")
         self.assertEqual(enriched["citations"][0]["source_url"], "https://www.dirm.example/a.pdf")
+        self.assertEqual(enriched["citations"][0]["source_excerpt"], "Bar commun : 42 cm")
+        self.assertIn("Bar commun : 42 cm", enriched["citations"][0]["source_context"])
         self.assertEqual(enriched["candidate"]["rule_key"], "species.bar.min-size.namo")
 
     def test_build_v2_artifacts_from_enriched_rules(self) -> None:
@@ -675,6 +830,8 @@ class BuildRegulationsFeedTests(unittest.TestCase):
                 species_scientific_name=None,
                 needs_manual_review=True,
                 notes="",
+                source_excerpt="Bar : 2 captures par jour",
+                source_context="Reglementation peche de loisir en mer. Bar : 2 captures par jour. Zone NAMO.",
             )
         )
 
@@ -683,8 +840,9 @@ class BuildRegulationsFeedTests(unittest.TestCase):
 
         self.assertEqual(len(documents), 1)
         self.assertEqual(documents[0]["document_hash"], rule["citations"][0]["document_hash"])
-        self.assertEqual(len(documents[0]["chunks"]), 1)
+        self.assertEqual(len(documents[0]["chunks"]), 2)
         self.assertEqual(candidates[0]["document_hash"], documents[0]["document_hash"])
+        self.assertIn("source_context", candidates[0])
 
 
 if __name__ == "__main__":

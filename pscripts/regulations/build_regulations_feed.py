@@ -31,8 +31,9 @@ STATIC_LEGIFRANCE_RULES_PATH = Path(
 )
 FETCH_LIVE_LEGIFRANCE = os.environ.get("REG_LEGIFRANCE_FETCH_LIVE", "false").lower() == "true"
 REQUEST_TIMEOUT_SECONDS = int(os.environ.get("REG_REQUEST_TIMEOUT_SECONDS", "25"))
-MAX_LINKED_HTML_PER_SOURCE = int(os.environ.get("REG_MAX_LINKED_HTML_PER_SOURCE", "10"))
-MAX_PDF_LINKS_PER_PAGE = int(os.environ.get("REG_MAX_PDF_LINKS_PER_PAGE", "12"))
+MAX_LINKED_HTML_PER_SOURCE = int(os.environ.get("REG_MAX_LINKED_HTML_PER_SOURCE", "18"))
+MAX_PDF_LINKS_PER_PAGE = int(os.environ.get("REG_MAX_PDF_LINKS_PER_PAGE", "18"))
+MAX_DOCUMENTS_PER_SOURCE = int(os.environ.get("REG_MAX_DOCUMENTS_PER_SOURCE", "45"))
 ENABLE_PDF_OCR = os.environ.get("REG_ENABLE_PDF_OCR", "false").lower() == "true"
 OCR_MIN_TEXT_CHARS = int(os.environ.get("REG_OCR_MIN_TEXT_CHARS", "900"))
 OCR_MAX_PAGES = int(os.environ.get("REG_OCR_MAX_PAGES", "8"))
@@ -89,6 +90,14 @@ RELEVANT_SOURCE_KEYWORDS = (
     "plongee",
     "calanques",
     "golfe",
+    "autorisation",
+    "declaration",
+    "enregistrement",
+    "marquage",
+    "engin",
+    "filet",
+    "casier",
+    "arretes",
 )
 NEGATIVE_SOURCE_KEYWORDS = (
     "accessibilite",
@@ -104,6 +113,7 @@ NEGATIVE_SOURCE_KEYWORDS = (
 RULE_TYPE_ORDER = {
     "DIVING_GENERAL": 10,
     "SPEARFISHING_GENERAL": 20,
+    "PRACTICE_RULE": 25,
     "MIN_SIZE": 30,
     "QUOTA": 40,
     "CLOSURE_PERIOD": 50,
@@ -151,6 +161,7 @@ RULE_ACTIVITY_TYPES = {
     "QUOTA": "recreational_fishing",
     "CLOSURE_PERIOD": "recreational_fishing",
     "PROTECTED_SPECIES": "recreational_fishing",
+    "PRACTICE_RULE": "recreational_fishing",
     "LOCAL_RESTRICTION": "recreational_fishing",
 }
 RULE_CONSTRAINT_TYPES = {
@@ -160,7 +171,22 @@ RULE_CONSTRAINT_TYPES = {
     "QUOTA": "quota",
     "CLOSURE_PERIOD": "closure_period",
     "PROTECTED_SPECIES": "forbidden_capture",
+    "PRACTICE_RULE": "practice_rule",
     "LOCAL_RESTRICTION": "declaration_or_local_rule",
+}
+FRENCH_MONTHS = {
+    "janvier": 1,
+    "fevrier": 2,
+    "mars": 3,
+    "avril": 4,
+    "mai": 5,
+    "juin": 6,
+    "juillet": 7,
+    "aout": 8,
+    "septembre": 9,
+    "octobre": 10,
+    "novembre": 11,
+    "decembre": 12,
 }
 
 
@@ -355,6 +381,214 @@ def now_utc() -> datetime:
 
 def to_date_str(value: datetime) -> str:
     return value.date().isoformat()
+
+
+def is_iso_date(value: str) -> bool:
+    try:
+        datetime.strptime(value, "%Y-%m-%d")
+    except (TypeError, ValueError):
+        return False
+    return True
+
+
+def parse_french_date_to_iso(value: Any, default_year: int | None = None) -> str | None:
+    if value is None:
+        return None
+    text = fold_text(str(value))
+    if not text:
+        return None
+
+    iso_match = re.search(r"\b(?P<year>20\d{2})-(?P<month>\d{1,2})-(?P<day>\d{1,2})\b", text)
+    if iso_match:
+        year = int(iso_match.group("year"))
+        month = int(iso_match.group("month"))
+        day = int(iso_match.group("day"))
+        try:
+            return datetime(year, month, day).date().isoformat()
+        except ValueError:
+            return None
+
+    numeric_match = re.search(r"\b(?P<day>\d{1,2})[/-](?P<month>\d{1,2})[/-](?P<year>20\d{2})\b", text)
+    if numeric_match:
+        year = int(numeric_match.group("year"))
+        month = int(numeric_match.group("month"))
+        day = int(numeric_match.group("day"))
+        try:
+            return datetime(year, month, day).date().isoformat()
+        except ValueError:
+            return None
+
+    month_names = "|".join(FRENCH_MONTHS)
+    word_match = re.search(
+        rf"\b(?P<day>\d{{1,2}})\s*(?:er)?\s+(?P<month>{month_names})(?:\s+(?P<year>20\d{{2}}))?\b",
+        text,
+    )
+    if not word_match:
+        return None
+
+    year = int(word_match.group("year")) if word_match.group("year") else default_year
+    if not year:
+        return None
+    month = FRENCH_MONTHS[word_match.group("month")]
+    day = int(word_match.group("day"))
+    try:
+        return datetime(year, month, day).date().isoformat()
+    except ValueError:
+        return None
+
+
+def reference_year_from_text(text: str) -> int | None:
+    raw_text = str(text)
+    years = [int(match) for match in re.findall(r"\b(20\d{2})\b", raw_text)]
+    years.extend(int(match) for match in re.findall(r"(?<!\d)(20\d{2})(?=\d{4}\b)", raw_text))
+    if not years:
+        return None
+    current_year = now_utc().year
+    if current_year in years:
+        return current_year
+    upcoming = [year for year in years if year >= current_year - 1]
+    if upcoming:
+        return max(upcoming)
+    return max(years)
+
+
+def date_pattern() -> str:
+    month_names = "|".join(FRENCH_MONTHS)
+    return (
+        rf"(?:20\d{{2}}-\d{{1,2}}-\d{{1,2}}|\d{{1,2}}[/-]\d{{1,2}}[/-]20\d{{2}}|"
+        rf"\d{{1,2}}\s*(?:er)?\s+(?:{month_names})(?:\s+20\d{{2}})?)"
+    )
+
+
+def infer_rule_validity(text: str, *, source_title: str = "", source_url: str = "") -> dict[str, Any]:
+    combined = normalize_spaces(" ".join(part for part in (text, source_title, source_url) if part))
+    if not combined:
+        return {}
+
+    date_re = date_pattern()
+    reference_year = reference_year_from_text(f"{source_title} {source_url}")
+    candidates: list[dict[str, Any]] = []
+
+    def add_candidate(
+        *,
+        quote: str,
+        valid_from: str | None = None,
+        valid_to: str | None = None,
+        confidence: float,
+        source: str,
+        reason: str,
+    ) -> None:
+        if not valid_from and not valid_to:
+            return
+        candidates.append(
+            {
+                "valid_from": valid_from,
+                "valid_to": valid_to,
+                "effective_date_source": source,
+                "effective_date_confidence": confidence,
+                "effective_date_quote": normalize_spaces(quote)[:700],
+                "effective_date_reason": reason,
+            }
+        )
+
+    units = split_text_units(combined)
+    for unit in units:
+        folded = fold_text(unit)
+        if any(
+            marker in folded
+            for marker in (
+                "consultation du public",
+                "observations formulees",
+                "en application de l'article",
+                "code des relations entre le public",
+                "procedure de participation",
+            )
+        ):
+            continue
+        unit_year = reference_year_from_text(unit) or reference_year
+
+        for pattern, reason in (
+            (
+                rf"(?:entre(?:ra)? en vigueur|prend(?:ra)? effet|applicable a compter)\s+(?:le\s+|du\s+)?(?P<from>{date_re})",
+                "Date d'entree en vigueur explicite.",
+            ),
+            (
+                rf"(?:a compter du|a partir du|des le)\s*(?P<from>{date_re})",
+                "Date de debut explicite.",
+            ),
+            (
+                rf"(?:depuis le)\s*(?P<from>{date_re})",
+                "Date de debut explicite.",
+            ),
+        ):
+            match = re.search(pattern, folded)
+            if not match:
+                continue
+            valid_from = parse_french_date_to_iso(match.group("from"), default_year=unit_year)
+            add_candidate(
+                quote=unit,
+                valid_from=valid_from,
+                confidence=0.92,
+                source="parser",
+                reason=reason,
+            )
+
+        range_match = re.search(
+            rf"(?:applicable|valable|autorisee?|interdite?|ouverte?|fermee?|periode|campagne)?"
+            rf"\s*(?:du|de)\s+(?P<from>{date_re})\s+(?:au|jusqu au|jusqu'au)\s+(?P<to>{date_re})",
+            folded,
+        )
+        if range_match:
+            valid_from = parse_french_date_to_iso(range_match.group("from"), default_year=unit_year)
+            valid_to = parse_french_date_to_iso(range_match.group("to"), default_year=unit_year)
+            if valid_from and valid_to and valid_to < valid_from:
+                to_year = int(valid_to[:4]) + 1
+                reparsed_to = parse_french_date_to_iso(range_match.group("to"), default_year=to_year)
+                valid_to = reparsed_to or valid_to
+            add_candidate(
+                quote=unit,
+                valid_from=valid_from,
+                valid_to=valid_to,
+                confidence=0.78 if unit_year else 0.62,
+                source="parser",
+                reason="Periode d'application detectee dans le texte.",
+            )
+
+        until_match = re.search(rf"(?:jusqu au|jusqu'au|prend fin le)\s*(?P<to>{date_re})", folded)
+        if until_match:
+            valid_to = parse_french_date_to_iso(until_match.group("to"), default_year=unit_year)
+            add_candidate(
+                quote=unit,
+                valid_to=valid_to,
+                confidence=0.75,
+                source="parser",
+                reason="Date de fin explicite.",
+            )
+
+    title_folded = fold_text(source_title)
+    year_match = re.search(r"\b(?:applicables?|campagne|annee|saison|reglementation)\s+(?:en\s+|pour\s+)?(?P<year>20\d{2})\b", title_folded)
+    if year_match:
+        year = int(year_match.group("year"))
+        add_candidate(
+            quote=source_title,
+            valid_from=f"{year}-01-01",
+            valid_to=f"{year}-12-31",
+            confidence=0.56,
+            source="parser_title",
+            reason="Annee d'application detectee dans le titre de la source.",
+        )
+
+    if not candidates:
+        return {}
+
+    candidates.sort(
+        key=lambda item: (
+            -float(item.get("effective_date_confidence") or 0),
+            0 if item.get("valid_from") else 1,
+            0 if item.get("valid_to") else 1,
+        )
+    )
+    return candidates[0]
 
 
 def slugify(text: str) -> str:
@@ -859,8 +1093,18 @@ def build_base_rule(
     needs_manual_review: bool,
     notes: str,
     zone: dict[str, Any] | None = None,
+    source_excerpt: str | None = None,
+    source_context: str | None = None,
 ) -> dict[str, Any]:
     fetched_at = now_utc()
+    source_excerpt_text = normalize_spaces(source_excerpt if source_excerpt is not None else description)
+    source_context_text = normalize_spaces(source_context if source_context is not None else description)
+    source_title_for_validity = source.title if canonicalize_url(source_url) == canonicalize_url(source.url) else ""
+    validity = infer_rule_validity(
+        " ".join(part for part in (description, source_excerpt_text, source_context_text) if part),
+        source_title=source_title_for_validity,
+        source_url=source_url,
+    )
     return {
         "rule_key": rule_key,
         "rule_type": rule_type,
@@ -878,11 +1122,20 @@ def build_base_rule(
             "authority_name": source.authority_name,
             "source_url": source_url,
             "title": source.title,
-            "effective_date": to_date_str(fetched_at),
+            "effective_date": validity.get("valid_from"),
+            "fetched_at": fetched_at.isoformat(),
         },
         "zone": dict(zone or DEFAULT_ZONE),
         "needs_manual_review": needs_manual_review,
         "notes": notes,
+        "source_excerpt": source_excerpt_text,
+        "source_context": source_context_text,
+        "valid_from": validity.get("valid_from"),
+        "valid_to": validity.get("valid_to"),
+        "effective_date_source": validity.get("effective_date_source"),
+        "effective_date_confidence": validity.get("effective_date_confidence"),
+        "effective_date_quote": validity.get("effective_date_quote"),
+        "effective_date_reason": validity.get("effective_date_reason"),
     }
 
 
@@ -944,8 +1197,58 @@ def species_record_for_rule(rule: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
+def source_context_window(text: str, anchor_text: str, max_chars: int = 1400) -> str:
+    normalized_anchor = normalize_spaces(anchor_text)
+    normalized_text = normalize_spaces(text)
+    if not normalized_text:
+        return normalized_anchor
+    if not normalized_anchor:
+        return normalized_text[:max_chars]
+
+    index = normalized_text.find(normalized_anchor)
+    if index == -1:
+        return normalized_text[:max_chars]
+
+    half_window = max_chars // 2
+    start = max(0, index - half_window)
+    end = min(len(normalized_text), index + len(normalized_anchor) + half_window)
+    window = normalized_text[start:end].strip()
+    if start > 0:
+        window = "..." + window
+    if end < len(normalized_text):
+        window = window + "..."
+    return window
+
+
+def quote_matches_source_context(quote: str, context: str) -> bool:
+    normalized_quote = normalize_spaces(quote)
+    normalized_context = normalize_spaces(context)
+    if not normalized_quote or not normalized_context:
+        return False
+    return normalized_quote in normalized_context
+
+
+def rule_verification_context(rule: dict[str, Any]) -> str:
+    source = rule.get("source") or {}
+    return normalize_spaces(
+        " ".join(
+            str(part)
+            for part in (
+                rule.get("source_context"),
+                rule.get("source_excerpt"),
+                rule.get("description"),
+                source.get("title"),
+                source.get("source_url"),
+            )
+            if part
+        )
+    )
+
+
 def citation_quote_for_rule(rule: dict[str, Any], max_chars: int = 700) -> str:
-    quote = normalize_spaces(str(rule.get("description") or ""))
+    selected_quote = normalize_spaces(str(rule.get("selected_quote") or ""))
+    source_excerpt = normalize_spaces(str(rule.get("source_excerpt") or ""))
+    quote = selected_quote or source_excerpt or normalize_spaces(str(rule.get("description") or ""))
     if len(quote) <= max_chars:
         return quote
     return quote[: max_chars - 3].rstrip() + "..."
@@ -968,11 +1271,16 @@ def source_document_hash_for_rule(rule: dict[str, Any]) -> str:
 def citation_for_rule(rule: dict[str, Any]) -> dict[str, Any]:
     source = rule.get("source") or {}
     document_hash = source_document_hash_for_rule(rule)
+    selection_method = "ai_selected" if rule.get("selected_quote") else "parser_excerpt"
     return {
         "source_url": canonicalize_url(str(source.get("source_url") or "")),
         "source_title": source.get("title"),
         "authority_name": source.get("authority_name"),
         "quote": citation_quote_for_rule(rule),
+        "source_excerpt": normalize_spaces(str(rule.get("source_excerpt") or "")),
+        "source_context": normalize_spaces(str(rule.get("source_context") or ""))[:1800],
+        "selection_method": selection_method,
+        "effective_date_quote": rule.get("effective_date_quote"),
         "page_number": None,
         "locator": rule.get("legal_reference") or rule.get("rule_key"),
         "document_hash": document_hash,
@@ -1002,6 +1310,15 @@ def candidate_for_rule(rule: dict[str, Any]) -> dict[str, Any]:
         "confidence_score": rule.get("confidence_score") or infer_confidence_score(rule),
         "confidence_source": rule.get("confidence_source") or "heuristic",
         "confidence_reason": rule.get("confidence_reason"),
+        "selected_quote": rule.get("selected_quote"),
+        "source_excerpt": rule.get("source_excerpt"),
+        "source_context": str(rule.get("source_context") or "")[:1800],
+        "valid_from": rule.get("valid_from"),
+        "valid_to": rule.get("valid_to"),
+        "effective_date_source": rule.get("effective_date_source"),
+        "effective_date_confidence": rule.get("effective_date_confidence"),
+        "effective_date_quote": rule.get("effective_date_quote"),
+        "effective_date_reason": rule.get("effective_date_reason"),
         "needs_manual_review": bool(rule.get("needs_manual_review", False)),
         "quality_flags": rule.get("quality_flags") or [],
         "ai_audit": rule.get("ai_audit") or [],
@@ -1014,6 +1331,8 @@ def candidate_for_rule(rule: dict[str, Any]) -> dict[str, Any]:
             "species_scientific_name": rule.get("species_scientific_name"),
             "zone": rule.get("zone"),
             "legal_reference": rule.get("legal_reference"),
+            "valid_from": rule.get("valid_from"),
+            "valid_to": rule.get("valid_to"),
         },
     }
 
@@ -1021,6 +1340,23 @@ def candidate_for_rule(rule: dict[str, Any]) -> dict[str, Any]:
 def enrich_rule_for_publication(rule: dict[str, Any]) -> dict[str, Any]:
     source = rule.get("source") or {}
     enriched = dict(rule)
+    if not enriched.get("valid_from") and not enriched.get("valid_to"):
+        inferred_validity = infer_rule_validity(
+            " ".join(
+                str(part)
+                for part in (
+                    enriched.get("description"),
+                    enriched.get("source_excerpt"),
+                    enriched.get("source_context"),
+                )
+                if part
+            ),
+            source_title=str(source.get("title") or ""),
+            source_url=str(source.get("source_url") or ""),
+        )
+        for key, value in inferred_validity.items():
+            if value is not None and not enriched.get(key):
+                enriched[key] = value
     enriched["status"] = infer_rule_status(enriched)
     enriched["confidence_score"] = normalize_confidence_value(enriched.get("confidence_score"))
     if enriched["confidence_score"] is None:
@@ -1029,8 +1365,12 @@ def enrich_rule_for_publication(rule: dict[str, Any]) -> dict[str, Any]:
     enriched["confidence_reason"] = enriched.get("confidence_reason")
     enriched["activity_type"] = infer_activity_type(enriched)
     enriched["constraint_type"] = infer_constraint_type(enriched)
-    enriched["valid_from"] = enriched.get("valid_from") or source.get("effective_date")
+    enriched["valid_from"] = enriched.get("valid_from")
     enriched["valid_to"] = enriched.get("valid_to")
+    enriched["effective_date_source"] = enriched.get("effective_date_source")
+    enriched["effective_date_confidence"] = enriched.get("effective_date_confidence")
+    enriched["effective_date_quote"] = enriched.get("effective_date_quote")
+    enriched["effective_date_reason"] = enriched.get("effective_date_reason")
     enriched["published_at"] = enriched.get("published_at")
     enriched["superseded_by_rule_key"] = enriched.get("superseded_by_rule_key")
     enriched["citations"] = [citation_for_rule(enriched)]
@@ -1075,6 +1415,8 @@ def parse_legifrance_spearfishing_rules(source: SourceRecord, html: str) -> list
             needs_manual_review=False,
             notes="Regle generale issue de Legifrance.",
             zone=resolve_rule_zone(source, sentence),
+            source_excerpt=sentence,
+            source_context=source_context_window(html, sentence),
         )
     ]
 
@@ -1104,6 +1446,8 @@ def parse_legifrance_diving_rules(source: SourceRecord, html: str) -> list[dict[
             needs_manual_review=False,
             notes="Regle generale de plongee issue de Legifrance.",
             zone=resolve_rule_zone(source, sentence),
+            source_excerpt=sentence,
+            source_context=source_context_window(html, sentence),
         )
     ]
 
@@ -1161,6 +1505,8 @@ def parse_ministere_spearfishing_rules(
                 needs_manual_review=True,
                 notes="Source operationnelle ministerielle, verification manuelle recommandee.",
                 zone=resolve_rule_zone(source, desc),
+                source_excerpt=desc,
+                source_context=source_context_window(html, desc),
             )
         )
 
@@ -1221,6 +1567,8 @@ def extract_dirm_size_rules(source: SourceRecord, source_url: str, text: str) ->
                     needs_manual_review=True,
                     notes="Extraction automatique depuis document operationnel, validation manuelle requise.",
                     zone=resolve_rule_zone(source, line),
+                    source_excerpt=line,
+                    source_context=source_context_window(text, line),
                 )
             )
 
@@ -1358,6 +1706,8 @@ def extract_dirm_quota_rules(source: SourceRecord, source_url: str, text: str) -
                 needs_manual_review=True,
                 notes="Extraction automatique de quotas, validation manuelle obligatoire.",
                 zone=resolve_rule_zone(source, description),
+                source_excerpt=description,
+                source_context=source_context_window(text, description),
             )
         )
 
@@ -1474,6 +1824,8 @@ def extract_dirm_closure_rules(source: SourceRecord, source_url: str, text: str)
                     needs_manual_review=True,
                     notes="Extraction automatique des periodes de fermeture, validation manuelle obligatoire.",
                     zone=resolve_rule_zone(source, segment),
+                    source_excerpt=segment,
+                    source_context=source_context_window(text, segment),
                 )
             )
 
@@ -1520,8 +1872,107 @@ def extract_dirm_protected_species_rules(source: SourceRecord, source_url: str, 
                     needs_manual_review=True,
                     notes="Extraction automatique des interdictions par espece, validation manuelle obligatoire.",
                     zone=resolve_rule_zone(source, segment),
+                    source_excerpt=segment,
+                    source_context=source_context_window(text, segment),
                 )
             )
+
+    return rules
+
+
+def extract_practice_restriction_rules(source: SourceRecord, source_url: str, text: str) -> list[dict[str, Any]]:
+    source_marker = fold_text(f"{source_url} {source.title}")
+    if "manuel" in source_marker or "recfishing" in source_marker:
+        return []
+
+    units = split_text_units(text)
+    rules: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    practice_markers = (
+        "engin",
+        "filet",
+        "casier",
+        "palangre",
+        "hamecon",
+        "marquage",
+        "nageoire",
+        "vente",
+        "equipement respiratoire",
+        "bouteille",
+        "lampe",
+        "harpon",
+        "debarquement",
+        "transport",
+    )
+    normative_markers = (
+        "il est interdit",
+        "est interdite",
+        "est interdit",
+        "sont interdit",
+        "est obligatoire",
+        "doit etre",
+        "doivent etre",
+        "sont autorises",
+        "sont autorisees",
+        "est autorise",
+        "est autorisee",
+        "la vente",
+    )
+    fragment_markers = (
+        "signifie pas",
+        "cette liste sera elargie",
+        "reservee a certains engins",
+        "obligation de debarquement",
+        "zones interdites ou dangereuses",
+        "respecter les tailles reglementaires",
+        "engins autorises et tailles minimales",
+        "listent les engins autorises",
+    )
+
+    for unit in units:
+        lowered = fold_text(unit)
+        if len(unit) < 45 or len(unit) > 520:
+            continue
+        if not any(marker in lowered for marker in practice_markers):
+            continue
+        if not any(marker in lowered for marker in normative_markers):
+            continue
+        if "peche" not in lowered and "capture" not in lowered and "loisir" not in lowered:
+            continue
+        if any(marker in lowered for marker in ("cookie", "newsletter", "mentions legales", "contact")):
+            continue
+        if any(marker in lowered for marker in fragment_markers):
+            continue
+
+        scope = rule_scope_for_text(source, unit)
+        species_name = detect_species_in_text(unit)
+        key_subject = slugify(species_name or normalize_spaces(unit)[:80])
+        key = f"practice.{key_subject}.restriction.{slugify(scope)}.{short_hash(unit)}"
+        if key in seen:
+            continue
+        seen.add(key)
+        title_subject = f" - {species_name}" if species_name else ""
+        rules.append(
+            build_base_rule(
+                rule_key=key,
+                rule_type="PRACTICE_RULE",
+                title=f"Regle de pratique de peche de loisir{title_subject}",
+                description=unit,
+                source=source,
+                source_url=source_url,
+                legal_reference="Document operationnel - pratiques de peche de loisir",
+                metric_type=None,
+                metric_value=None,
+                metric_unit=None,
+                species_common_name=species_name,
+                species_scientific_name=None,
+                needs_manual_review=True,
+                notes="Extraction automatique d'une regle de pratique, validation manuelle recommandee.",
+                zone=resolve_rule_zone(source, unit),
+                source_excerpt=unit,
+                source_context=source_context_window(text, unit),
+            )
+        )
 
     return rules
 
@@ -1652,6 +2103,8 @@ def extract_sensitive_species_declaration_rules(
                 needs_manual_review=True,
                 notes="Extraction automatique des obligations declaratives d'especes sensibles.",
                 zone=resolve_rule_zone(source, description),
+                source_excerpt=description,
+                source_context=context,
             )
         )
     return rules
@@ -1669,6 +2122,8 @@ def collect_source_documents(
 
     def add_document(url: str, text: str) -> None:
         if not text.strip():
+            return
+        if len(documents) >= max(1, MAX_DOCUMENTS_PER_SOURCE):
             return
         canonical_url = canonicalize_url(url)
         if canonical_url in seen_doc_urls:
@@ -1708,7 +2163,12 @@ def collect_source_documents(
         print(f"[WARN] Echec fetch source={source.source_id} url={source_url}: {exc}")
         return documents
 
-    should_collect_pdfs = "pdf" in source_kind or source.source_type in {"DIRM", "MINISTERE_MER", "PREFECTURE_MARITIME"}
+    should_collect_pdfs = "pdf" in source_kind or source.source_type in {
+        "DIRM",
+        "MINISTERE_MER",
+        "PREFECTURE_MARITIME",
+        "DATA_GOUV",
+    }
     if should_collect_pdfs:
         for pdf_url in extract_pdf_urls_from_html(base_html, source_url, limit=MAX_PDF_LINKS_PER_PAGE):
             try:
@@ -1716,12 +2176,15 @@ def collect_source_documents(
             except Exception as exc:
                 print(f"[WARN] Echec fetch PDF lie source={source.source_id} url={pdf_url}: {exc}")
 
-    if "links" not in source_kind:
+    should_collect_links = "links" in source_kind or source.source_type in {"DIRM", "PREFECTURE_MARITIME", "DATA_GOUV"}
+    if not should_collect_links:
         return documents
 
     linked_html_urls = extract_relevant_html_links_from_html(base_html, source_url, limit=MAX_LINKED_HTML_PER_SOURCE)
     per_link_pdf_limit = max(2, MAX_PDF_LINKS_PER_PAGE // 2)
     for linked_html_url in linked_html_urls:
+        if len(documents) >= max(1, MAX_DOCUMENTS_PER_SOURCE):
+            break
         try:
             linked_html = fetch_html_cached(linked_html_url)
             add_document(linked_html_url, html_to_text(linked_html))
@@ -1730,6 +2193,8 @@ def collect_source_documents(
             continue
 
         for pdf_url in extract_pdf_urls_from_html(linked_html, linked_html_url, limit=per_link_pdf_limit):
+            if len(documents) >= max(1, MAX_DOCUMENTS_PER_SOURCE):
+                break
             try:
                 add_document(pdf_url, fetch_pdf_text_cached(pdf_url))
             except Exception as exc:
@@ -2021,6 +2486,26 @@ def build_quality_report(
                 details={"source_url": source_url},
             )
 
+        valid_from = str(rule.get("valid_from") or "")
+        valid_to = str(rule.get("valid_to") or "")
+        if valid_from and not is_iso_date(valid_from):
+            add_quality_issue(
+                issues,
+                severity="error",
+                category="invalid_validity_date",
+                rule_key=rule_key,
+                message="Date valid_from invalide.",
+                details={"valid_from": valid_from},
+            )
+        if valid_to and not is_iso_date(valid_to):
+            add_quality_issue(
+                issues,
+                severity="error",
+                category="invalid_validity_date",
+                rule_key=rule_key,
+                message="Date valid_to invalide.",
+                details={"valid_to": valid_to},
+            )
         zone = rule.get("zone") or {}
         if zone.get("strategy") == "CUSTOM_BBOX":
             bbox_fields = ("lat_min", "lat_max", "lon_min", "lon_max")
@@ -2104,12 +2589,23 @@ def build_quality_report(
     for rule in rules:
         zone_code = rule_zone_code(rule) or "UNKNOWN"
         counts_by_zone[zone_code] = counts_by_zone.get(zone_code, 0) + 1
+    validity_known_count = sum(1 for rule in rules if rule.get("valid_from") or rule.get("valid_to"))
+    validity_ai_count = sum(1 for rule in rules if rule.get("effective_date_source") == "ai")
+    validity_parser_count = sum(
+        1
+        for rule in rules
+        if str(rule.get("effective_date_source") or "").startswith("parser")
+    )
 
     return {
         "generated_at": now_utc().isoformat(),
         "rules_count": len(rules),
         "needs_manual_review_count": sum(1 for rule in rules if bool(rule.get("needs_manual_review"))),
         "ai_confidence_count": len((ai_audit or {}).get("confidence_scores") or {}),
+        "validity_known_count": validity_known_count,
+        "validity_missing_count": max(0, len(rules) - validity_known_count),
+        "validity_ai_count": validity_ai_count,
+        "validity_parser_count": validity_parser_count,
         "counts_by_type": counts_by_type,
         "counts_by_zone": dict(sorted(counts_by_zone.items())),
         "issue_count": len(issues),
@@ -2125,6 +2621,13 @@ def compact_rule_for_ai(rule: dict[str, Any]) -> dict[str, Any]:
         "rule_type": rule.get("rule_type"),
         "title": rule.get("title"),
         "description": str(rule.get("description") or "")[:700],
+        "source_excerpt": str(rule.get("source_excerpt") or "")[:700],
+        "source_context": str(rule.get("source_context") or "")[:1600],
+        "current_quote": citation_quote_for_rule(rule, max_chars=500),
+        "legal_reference": rule.get("legal_reference"),
+        "valid_from": rule.get("valid_from"),
+        "valid_to": rule.get("valid_to"),
+        "effective_date_quote": rule.get("effective_date_quote"),
         "metric_type": rule.get("metric_type"),
         "metric_value": rule.get("metric_value"),
         "metric_unit": rule.get("metric_unit"),
@@ -2132,6 +2635,7 @@ def compact_rule_for_ai(rule: dict[str, Any]) -> dict[str, Any]:
         "zone_code": rule_zone_code(rule),
         "source_priority": source.get("source_priority"),
         "source_url": source.get("source_url"),
+        "source_title": source.get("title"),
         "needs_manual_review": bool(rule.get("needs_manual_review", False)),
     }
 
@@ -2168,6 +2672,18 @@ def build_source_documents_manifest(rules: list[dict[str, Any]]) -> list[dict[st
                     }
                 ],
             }
+            source_context = normalize_spaces(str(citation.get("source_context") or ""))
+            if source_context and source_context != normalize_spaces(str(citation.get("quote") or "")):
+                by_hash[document_hash]["chunks"].append(
+                    {
+                        "chunk_index": 1,
+                        "chunk_hash": sha256_text(f"{document_hash}:1:{source_context}"),
+                        "text_excerpt": source_context,
+                        "token_estimate": max(1, len(source_context.split())),
+                        "page_number": citation.get("page_number"),
+                        "locator": f"{citation.get('locator')}:context",
+                    }
+                )
             continue
 
         current["rule_keys"].append(rule.get("rule_key"))
@@ -2184,6 +2700,21 @@ def build_source_documents_manifest(rules: list[dict[str, Any]]) -> list[dict[st
                         "token_estimate": max(1, len(quote.split())),
                         "page_number": citation.get("page_number"),
                         "locator": citation.get("locator"),
+                    }
+                )
+        source_context = str(citation.get("source_context") or "")
+        if source_context:
+            context_index = len(current["chunks"])
+            context_hash = sha256_text(f"{document_hash}:{context_index}:{source_context}")
+            if all(chunk["chunk_hash"] != context_hash for chunk in current["chunks"]):
+                current["chunks"].append(
+                    {
+                        "chunk_index": context_index,
+                        "chunk_hash": context_hash,
+                        "text_excerpt": source_context,
+                        "token_estimate": max(1, len(source_context.split())),
+                        "page_number": citation.get("page_number"),
+                        "locator": f"{citation.get('locator')}:context",
                     }
                 )
 
@@ -2271,6 +2802,13 @@ def normalize_ai_confidence_scores(payload: Any) -> dict[str, dict[str, Any]]:
         normalized[rule_key] = {
             "confidence_score": score,
             "confidence_reason": str(item.get("confidence_reason") or item.get("reason") or "").strip()[:600],
+            "selected_quote": normalize_spaces(str(item.get("selected_quote") or ""))[:900] or None,
+            "selected_quote_reason": str(item.get("selected_quote_reason") or "").strip()[:400] or None,
+            "valid_from": parse_french_date_to_iso(item.get("valid_from")),
+            "valid_to": parse_french_date_to_iso(item.get("valid_to")),
+            "effective_date_quote": normalize_spaces(str(item.get("effective_date_quote") or ""))[:900] or None,
+            "effective_date_reason": str(item.get("effective_date_reason") or "").strip()[:400] or None,
+            "effective_date_confidence": normalize_confidence_value(item.get("effective_date_confidence")),
         }
     return normalized
 
@@ -2493,6 +3031,11 @@ def run_ai_rule_audit(rules: list[dict[str, Any]]) -> dict[str, Any]:
             "Ne cree pas de nouvelles regles. Signale seulement incoherences, doublons probables, "
             "valeurs suspectes, zone incoherente ou source faible. "
             "Attribue aussi un niveau de confiance entre 0 et 1 a chaque regle. "
+            "Quand un contexte source plus large est fourni, selectionne si utile une citation plus precise "
+            "en recopiant exactement un extrait du contexte source, sans le reformuler ni le corriger. "
+            "Si une date d'entree en vigueur ou une periode d'application est explicitement presente, "
+            "renseigne valid_from et/ou valid_to au format ISO YYYY-MM-DD, avec un extrait exact qui prouve la date. "
+            "N'invente jamais de date absente du texte. "
             "Base le score sur la precision de l'extrait, la source, la structure de la valeur, "
             "la coherence zone/espece et le besoin de verification humaine. Reponds uniquement en JSON."
         ),
@@ -2502,6 +3045,12 @@ def run_ai_rule_audit(rules: list[dict[str, Any]]) -> dict[str, Any]:
                     "rule_key": "rule_key concernee",
                     "confidence_score": "nombre entre 0 et 1",
                     "confidence_reason": "raison courte du score",
+                    "selected_quote": "extrait exact du source_context si plus pertinent, sinon null",
+                    "selected_quote_reason": "pourquoi cet extrait est le plus utile",
+                    "valid_from": "YYYY-MM-DD si prouve dans le texte, sinon null",
+                    "valid_to": "YYYY-MM-DD si prouve dans le texte, sinon null",
+                    "effective_date_quote": "extrait exact qui prouve valid_from/valid_to, sinon null",
+                    "effective_date_reason": "raison courte de l'extraction temporelle",
                 }
             ],
             "issues": [
@@ -2585,6 +3134,32 @@ def apply_ai_audit_to_rules(rules: list[dict[str, Any]], ai_audit: dict[str, Any
         reason = str(confidence.get("confidence_reason") or "").strip()
         if reason:
             rule["confidence_reason"] = reason
+        selected_quote = str(confidence.get("selected_quote") or "").strip()
+        verification_context = rule_verification_context(rule)
+        if selected_quote and quote_matches_source_context(selected_quote, verification_context):
+            rule["selected_quote"] = normalize_spaces(selected_quote)
+            rule["selected_quote_source"] = "ai"
+            selected_reason = str(confidence.get("selected_quote_reason") or "").strip()
+            if selected_reason:
+                rule["selected_quote_reason"] = selected_reason
+        effective_date_quote = str(confidence.get("effective_date_quote") or "").strip()
+        has_date_quote = bool(effective_date_quote and quote_matches_source_context(effective_date_quote, verification_context))
+        if has_date_quote:
+            valid_from = parse_french_date_to_iso(confidence.get("valid_from"))
+            valid_to = parse_french_date_to_iso(confidence.get("valid_to"))
+            if valid_from and not rule.get("valid_from"):
+                rule["valid_from"] = valid_from
+            if valid_to and not rule.get("valid_to"):
+                rule["valid_to"] = valid_to
+            if valid_from or valid_to:
+                rule["effective_date_source"] = "ai"
+                rule["effective_date_quote"] = normalize_spaces(effective_date_quote)
+                date_reason = str(confidence.get("effective_date_reason") or "").strip()
+                if date_reason:
+                    rule["effective_date_reason"] = date_reason
+                rule["effective_date_confidence"] = (
+                    normalize_confidence_value(confidence.get("effective_date_confidence")) or score
+                )
         audit_items = rule.setdefault("ai_audit", [])
         if isinstance(audit_items, list):
             audit_items.append(
@@ -2680,6 +3255,7 @@ def add_operational_source_rules(
         rules.extend(extract_dirm_quota_rules(source, document.url, document.text))
         rules.extend(extract_dirm_closure_rules(source, document.url, document.text))
         rules.extend(extract_dirm_protected_species_rules(source, document.url, document.text))
+        rules.extend(extract_practice_restriction_rules(source, document.url, document.text))
         rules.extend(extract_sensitive_species_declaration_rules(source, document.url, document.text))
 
 

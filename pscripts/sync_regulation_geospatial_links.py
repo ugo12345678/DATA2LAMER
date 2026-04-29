@@ -498,6 +498,12 @@ def upsert_rule(client, seed_rule: dict[str, Any], source_document_id: str, time
         "candidate_key": (seed_rule.get("candidate") or {}).get("candidate_key"),
         "confidence_source": seed_rule.get("confidence_source"),
         "confidence_reason": seed_rule.get("confidence_reason"),
+        "valid_from": seed_rule.get("valid_from"),
+        "valid_to": seed_rule.get("valid_to"),
+        "effective_date_source": seed_rule.get("effective_date_source"),
+        "effective_date_confidence": seed_rule.get("effective_date_confidence"),
+        "effective_date_quote": seed_rule.get("effective_date_quote"),
+        "effective_date_reason": seed_rule.get("effective_date_reason"),
     }
 
     data = {
@@ -520,7 +526,7 @@ def upsert_rule(client, seed_rule: dict[str, Any], source_document_id: str, time
         "is_geospatial": True,
         "status": seed_rule.get("status") or ("needs_review" if seed_rule.get("needs_manual_review") else "published"),
         "confidence_score": seed_rule.get("confidence_score"),
-        "valid_from": seed_rule.get("valid_from") or source.get("effective_date"),
+        "valid_from": seed_rule.get("valid_from"),
         "valid_to": seed_rule.get("valid_to"),
         "published_at": seed_rule.get("published_at"),
         "activity_type": seed_rule.get("activity_type"),

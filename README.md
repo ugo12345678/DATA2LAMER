@@ -205,7 +205,10 @@ Variables utiles:
 - `REG_AI_MODEL`: modele utilise pour l'audit IA, defaut `nvidia/nemotron-3-super-120b-a12b:free`.
 - `REG_AI_BASE_URL`: endpoint OpenAI-compatible, defaut `https://openrouter.ai/api/v1`. Les endpoints locaux (`localhost`, `127.0.0.1`) ne demandent pas de cle API.
 - `REG_AI_MAX_RULES`: nombre maximal de regles envoyees a l'audit IA, defaut `200`.
+- `REG_MAX_LINKED_HTML_PER_SOURCE`, `REG_MAX_PDF_LINKS_PER_PAGE`, `REG_MAX_DOCUMENTS_PER_SOURCE`: bornes de decouverte documentaire par source.
 - L'audit IA renseigne `confidence_score`, `confidence_source="ai"` et `confidence_reason` sur les regles auditees. Les regles avec un score IA inferieur a `0.65` repassent en revue manuelle.
+- Le pipeline extrait aussi `valid_from`, `valid_to`, `effective_date_source`, `effective_date_confidence`, `effective_date_quote` et `effective_date_reason`. L'IA peut proposer ces dates seulement avec un extrait exact retrouve dans le contexte source.
+- Les regles gardent `source_excerpt`, `source_context` et, si l'IA trouve mieux sans reformuler, `selected_quote`.
 - `REG_ENABLE_PDF_OCR`: active/desactive l'OCR des PDF peu lisibles, defaut `false`.
 
 OCR PDF optionnel:
