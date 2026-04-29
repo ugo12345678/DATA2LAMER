@@ -28,6 +28,7 @@ CENTROID_DELTA_DEG = float(os.environ.get("REG_CENTROID_DELTA_DEG", "0.01"))
 ALLOW_SPOTS_FALLBACK_FOR_ZONE_UNION = (
     os.environ.get("REG_ALLOW_SPOTS_FALLBACK_FOR_ZONE_UNION", "true").lower() == "true"
 )
+POSTGRES_INT_MAX = 2_147_483_647
 
 
 @dataclass(frozen=True)
@@ -342,6 +343,12 @@ def primary_citation(seed_rule: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def safe_chunk_index(rule_key: str) -> int:
+    digest = hashlib.sha1(rule_key.encode("utf-8")).hexdigest()[:8]
+    raw_value = int(digest, 16)
+    return (raw_value % POSTGRES_INT_MAX) + 1
+
+
 def create_extraction_run(
     client,
     started_at: str,
@@ -419,7 +426,7 @@ def upsert_document_chunk(
     citation = primary_citation(seed_rule)
     quote = str(citation.get("quote") or seed_rule.get("description") or "")
     rule_key = str(seed_rule.get("rule_key") or "")
-    chunk_index = int(hashlib.sha1(rule_key.encode("utf-8")).hexdigest()[:8], 16)
+    chunk_index = safe_chunk_index(rule_key)
     chunk_hash = f"{citation.get('document_hash')}:{rule_key}:{chunk_index}"
     data = {
         "source_document_id": source_document_id,

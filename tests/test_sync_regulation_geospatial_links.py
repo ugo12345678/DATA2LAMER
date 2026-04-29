@@ -10,6 +10,7 @@ from pscripts.sync_regulation_geospatial_links import (
     normalize_bbox,
     primary_citation,
     resolve_rule_zone_bbox,
+    safe_chunk_index,
     to_spot_items,
     to_zone_items,
 )
@@ -202,6 +203,12 @@ class SyncRegulationGeospatialLinksTests(unittest.TestCase):
 
         self.assertEqual(citation["quote"], "fallback")
         self.assertEqual(citation["source_url"], "https://example.test/fallback")
+
+    def test_safe_chunk_index_stays_in_postgres_integer_range(self) -> None:
+        value = safe_chunk_index("species.bar.declaration.mediterranee")
+
+        self.assertGreaterEqual(value, 1)
+        self.assertLessEqual(value, 2_147_483_647)
 
 
 if __name__ == "__main__":
