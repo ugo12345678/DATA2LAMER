@@ -1,0 +1,1212 @@
+[
+  {
+    "document_hash": "b482c3bf66474d580c0aad42184d51620259b986b7c658da8f757a770c0b3d6a",
+    "source_url": "https://www.dirm.mediterranee.developpement-durable.gouv.fr/IMG/pdf/la_peche_de_loisir_en_france_en_2026.pdf",
+    "canonical_url": "https://www.dirm.mediterranee.developpement-durable.gouv.fr/IMG/pdf/la_peche_de_loisir_en_france_en_2026.pdf",
+    "source_type": "DIRM",
+    "authority_name": "DIRM Mediterranee",
+    "title": "Nouvelle reglementation peche de loisir 2026",
+    "document_type": "pdf",
+    "content_length": 99,
+    "fetched_at": null,
+    "checked_at": "2026-04-29T17:10:45.607559+00:00",
+    "rule_keys": [
+      "species.thon-rouge.declaration.mediterranee"
+    ],
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "chunk_hash": "fdf624e27db5e9555f7644d0cd1524a924f580351b4ea64b150fbf9adee82097",
+        "text_excerpt": "ATLANTIQUE MÉDITERRANÉE THON ROUGE DORADE À RETENIR L'enregistrement est rapide et valable 12 mois.",
+        "token_estimate": 14,
+        "page_number": null,
+        "locator": "Reglement UE 2023/2842 et dispositifs nationaux d'application"
+      }
+    ]
+  },
+  {
+    "document_hash": "b75f510be6c14079241d24ccf8e969125f68de93b26047ec30c6eea66c31472c",
+    "source_url": "https://www.dirm.memn.developpement-durable.gouv.fr/IMG/pdf/arrete_2024_-_peche_de_loisirs_-_lieu_jaune_.pdf",
+    "canonical_url": "https://www.dirm.memn.developpement-durable.gouv.fr/IMG/pdf/arrete_2024_-_peche_de_loisirs_-_lieu_jaune_.pdf",
+    "source_type": "DIRM",
+    "authority_name": "DIRM Manche Est Mer du Nord",
+    "title": "Bar et lieu jaune - Regles applicables en 2026",
+    "document_type": "pdf",
+    "content_length": 195,
+    "fetched_at": null,
+    "checked_at": "2026-04-29T17:10:45.607604+00:00",
+    "rule_keys": [
+      "species.lieu-jaune.closure.1-er-janvier.30-avril.memn",
+      "species.lieu-jaune.protected.memn.aa47e7b385"
+    ],
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "chunk_hash": "00e6c1cd4f0fe5e3ea8ed8bf5ac521ced11e8c6886af9afba05d3cffb9c72845",
+        "text_excerpt": "b) Aucun spécimen de lieu jaune ne peut être capturé et détenu du 1 er janvier au 30 avril.",
+        "token_estimate": 19,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - restrictions temporelles"
+      },
+      {
+        "chunk_index": 1,
+        "chunk_hash": "8ce876cc428dec260ec3e044fdebe53000199c2707922d6ad0e6367e5ef6cbb3",
+        "text_excerpt": "– La pratique du pêcher-relâcher du lieu jaune (Pollachius pollachius) est interdite dans les zones CIEM",
+        "token_estimate": 16,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - restrictions par espece"
+      }
+    ]
+  },
+  {
+    "document_hash": "6a6fba06b41f48c39c8e580c817a746465e048f32481ad7cfc5d946b6219738c",
+    "source_url": "https://www.dirm.memn.developpement-durable.gouv.fr/IMG/pdf/joe_20260411_0086_0009.pdf",
+    "canonical_url": "https://www.dirm.memn.developpement-durable.gouv.fr/IMG/pdf/joe_20260411_0086_0009.pdf",
+    "source_type": "DIRM",
+    "authority_name": "DIRM Manche Est Mer du Nord",
+    "title": "Reglementation europeenne et nationale - peche de loisir",
+    "document_type": "pdf",
+    "content_length": 78,
+    "fetched_at": null,
+    "checked_at": "2026-04-29T17:10:45.607594+00:00",
+    "rule_keys": [
+      "species.dorade-rose.declaration.memn",
+      "species.lieu-jaune.declaration.memn"
+    ],
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "chunk_hash": "b398558ebbe4a542c0b18a651c5a0b91478e6ba7a8263c5e8515bf142ad2eac9",
+        "text_excerpt": "« – Dorade rose (Pagellus bogaraveo) :",
+        "token_estimate": 7,
+        "page_number": null,
+        "locator": "Reglement UE 2023/2842 et dispositifs nationaux d'application"
+      },
+      {
+        "chunk_index": 1,
+        "chunk_hash": "f6df28768f716ea97f2febbe0bf15cebc308dbe8f1eefc1320ba0398342dea26",
+        "text_excerpt": "« – Lieu jaune (Pollachius pollachius) :",
+        "token_estimate": 7,
+        "page_number": null,
+        "locator": "Reglement UE 2023/2842 et dispositifs nationaux d'application"
+      }
+    ]
+  },
+  {
+    "document_hash": "d98fe80f5b8760091874412229c5424d25cffa55c805804cfed915eaeadf98d7",
+    "source_url": "https://www.dirm.memn.developpement-durable.gouv.fr/bar-et-lieu-jaune-regles-applicables-en-2026-pour-a1334.html",
+    "canonical_url": "https://www.dirm.memn.developpement-durable.gouv.fr/bar-et-lieu-jaune-regles-applicables-en-2026-pour-a1334.html",
+    "source_type": "DIRM",
+    "authority_name": "DIRM Manche Est Mer du Nord",
+    "title": "Bar et lieu jaune - Regles applicables en 2026",
+    "document_type": "html",
+    "content_length": 87,
+    "fetched_at": null,
+    "checked_at": "2026-04-29T17:10:45.607627+00:00",
+    "rule_keys": [
+      "species.lieu-jaune.closure.1er-janvier.30-avril.memn"
+    ],
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "chunk_hash": "0cdf95860b99d634b9f83c651ebd23b8b24ff5fc3835ef5d10cc0828f0a67621",
+        "text_excerpt": "Aucun spécimen de lieu jaune ne peut être capturé et détenu du 1er janvier au 30 avril.",
+        "token_estimate": 17,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - restrictions temporelles"
+      }
+    ]
+  },
+  {
+    "document_hash": "9fe81a8faf6394b882d6f7dcd59a167b58420bb44283f450ad2f02857e075b79",
+    "source_url": "https://www.dirm.memn.developpement-durable.gouv.fr/enregistrement-des-pecheurs-de-loisir-et-a1304.html",
+    "canonical_url": "https://www.dirm.memn.developpement-durable.gouv.fr/enregistrement-des-pecheurs-de-loisir-et-a1304.html",
+    "source_type": "DIRM",
+    "authority_name": "DIRM Manche Est Mer du Nord",
+    "title": "Enregistrement des pecheurs de loisir et declaration des captures",
+    "document_type": "html",
+    "content_length": 30,
+    "fetched_at": null,
+    "checked_at": "2026-04-29T17:10:45.607670+00:00",
+    "rule_keys": [
+      "species.thon-rouge.declaration.memn"
+    ],
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "chunk_hash": "6b69250fdbb86d969acc6c2cacd1ffac64e648df0ffe6aaf7fa1a3d3df700968",
+        "text_excerpt": "Thon rouge (Thunnus thynnus) ;",
+        "token_estimate": 5,
+        "page_number": null,
+        "locator": "Reglement UE 2023/2842 et dispositifs nationaux d'application"
+      }
+    ]
+  },
+  {
+    "document_hash": "c70ae8721c353695e2089d65017f80d95fb3ca4d3a134e2f7941eb31681d3bc9",
+    "source_url": "https://www.dirm.memn.developpement-durable.gouv.fr/modification-mesures-enregistrement-et-a1346.html",
+    "canonical_url": "https://www.dirm.memn.developpement-durable.gouv.fr/modification-mesures-enregistrement-et-a1346.html",
+    "source_type": "DIRM",
+    "authority_name": "DIRM Manche Est Mer du Nord",
+    "title": "Reglementation europeenne et nationale - peche de loisir",
+    "document_type": "html",
+    "content_length": 165,
+    "fetched_at": null,
+    "checked_at": "2026-04-29T17:10:45.607659+00:00",
+    "rule_keys": [
+      "species.maquereau.declaration.memn"
+    ],
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "chunk_hash": "794ae6c4c852b67e5ecf502ed2458e668e33a28cafa779c4e007a2f47df13bf9",
+        "text_excerpt": "Suite à l'ajout du bar et du maquereau pour la zone CIEM 4, les pêcheurs de loisirs pêchant en mer du nord sont maintenant concernés par la déclaration des captures.",
+        "token_estimate": 30,
+        "page_number": null,
+        "locator": "Reglement UE 2023/2842 et dispositifs nationaux d'application"
+      }
+    ]
+  },
+  {
+    "document_hash": "1f75510eab786e61c985b3b6191f8a31e42413876a7e548c6c929a255f663717",
+    "source_url": "https://www.dirm.memn.developpement-durable.gouv.fr/peche-de-loisirs-reglementation-bar-et-lieu-jaune-a1328.html",
+    "canonical_url": "https://www.dirm.memn.developpement-durable.gouv.fr/peche-de-loisirs-reglementation-bar-et-lieu-jaune-a1328.html",
+    "source_type": "DIRM",
+    "authority_name": "DIRM Manche Est Mer du Nord",
+    "title": "Reglementation europeenne et nationale - peche de loisir",
+    "document_type": "html",
+    "content_length": 1318,
+    "fetched_at": null,
+    "checked_at": "2026-04-29T17:10:45.607572+00:00",
+    "rule_keys": [
+      "species.bar.closure.1er-fevrier.31-mars.memn",
+      "species.lieu-jaune.closure.1er-fevrier.31-mars.memn"
+    ],
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "chunk_hash": "c19e0e6f0860aacffe73a56d78a68a83ba9908a4e457172d9fec9bcbe7b1d9d6",
+        "text_excerpt": "Réglementation en vigueur au nord du 48ᵉ parallèle Bar (Dicentrarchus labrax) Du 1er février au 31 mars ➜ Interdiction de capture ➜ No-kill autorisé uniquement (à la canne ou à la ligne à main) Du 1er janvier au 31 janvier et du 1er avril au 31 décembre ➜ 2 spécimens maximum par pêcheur et par jour Lieu jaune (Pollachius pollachius) ❌ Pratique du no-kill interdite Du 1er janvier au 30 avril ➜ Pêche interdite Du 1er mai au 31 décembre ➜ 2 spécimens maximum par pêcheur et par jour Rappel important Les discussions et annonces liées à la commission TAC et Quotas ne constituent pas une réglementation applicable tant qu’un texte officiel n’a pas été publié.",
+        "token_estimate": 116,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - restrictions temporelles"
+      },
+      {
+        "chunk_index": 1,
+        "chunk_hash": "520eda332362a9ad4d841a7e593579d1462195d3f5b24c8bedd3726ec2b84c6b",
+        "text_excerpt": "Réglementation en vigueur au nord du 48ᵉ parallèle Bar (Dicentrarchus labrax) Du 1er février au 31 mars ➜ Interdiction de capture ➜ No-kill autorisé uniquement (à la canne ou à la ligne à main) Du 1er janvier au 31 janvier et du 1er avril au 31 décembre ➜ 2 spécimens maximum par pêcheur et par jour Lieu jaune (Pollachius pollachius) ❌ Pratique du no-kill interdite Du 1er janvier au 30 avril ➜ Pêche interdite Du 1er mai au 31 décembre ➜ 2 spécimens maximum par pêcheur et par jour Rappel important Les discussions et annonces liées à la commission TAC et Quotas ne constituent pas une réglementation applicable tant qu’un texte officiel n’a pas été publié.",
+        "token_estimate": 116,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - restrictions temporelles"
+      }
+    ]
+  },
+  {
+    "document_hash": "92f84e81d4a6d8e41dca43f00dae253ec738f94fa68d4352f20926d540745591",
+    "source_url": "https://www.dirm.nord-atlantique-manche-ouest.developpement-durable.gouv.fr/IMG/pdf/reglementation_peche_loisir_bretagne_2025_01_cle51df32.pdf",
+    "canonical_url": "https://www.dirm.nord-atlantique-manche-ouest.developpement-durable.gouv.fr/IMG/pdf/reglementation_peche_loisir_bretagne_2025_01_cle51df32.pdf",
+    "source_type": "DIRM",
+    "authority_name": "DIRM Nord Atlantique Manche Ouest",
+    "title": "Synthese reglementation peche de loisir Bretagne",
+    "document_type": "pdf",
+    "content_length": 3442,
+    "fetched_at": null,
+    "checked_at": "2026-04-29T17:10:45.607691+00:00",
+    "rule_keys": [
+      "species.araignees.protected.namo.12c2532bd7",
+      "species.araignees.quota.captures-jour.bretagne",
+      "species.araignees.quota.kg-jour.namo",
+      "species.bar.closure.1-er-mars.31-mai.bretagne",
+      "species.coquilles-saint-jacques.closure.15-mai.30-septembre.namo",
+      "species.coquilles-saint-jacques.protected.namo.f33f93ad97",
+      "species.dorade-rose.protected.namo.caadb373be",
+      "species.dun-ciseau-a-bois-ou-dun-burin-dont-la-longueur-totale-ne-peut-exceder.min-size.namo",
+      "species.et-la-largeur.min-size.namo",
+      "species.pouces-pieds.closure.1er-janvier.15-janvier.bretagne",
+      "species.pouces-pieds.quota.kg-jour.bretagne",
+      "species.pouces-pieds.quota.kg-jour.namo",
+      "species.raie-brunette.protected.namo.ed71af0683",
+      "species.toutes-especes-marines.quota.kg-jour.bretagne"
+    ],
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "chunk_hash": "eb936acf77b96d79b503945101f45e439772fa2b6d02a9b50f9beccbb5d37422",
+        "text_excerpt": "Pêche des araignées d’un poids unitaire inférieur à 0,5 kg interdite.",
+        "token_estimate": 11,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - quotas peche de loisir"
+      },
+      {
+        "chunk_index": 1,
+        "chunk_hash": "4344e116f888f882b7dfe8f9dbf3950fe3e5edf61f8295e6f53babd8764aec93",
+        "text_excerpt": "Pêche des araignées d'un poids unitaire inférieur à 0,5 kg interdite.",
+        "token_estimate": 11,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - restrictions par espece"
+      },
+      {
+        "chunk_index": 2,
+        "chunk_hash": "dd0f89b9b14cfa0518d7dd05c60135e09e688ca8165886f422ad681a63451ca0",
+        "text_excerpt": "o La pêche sous-marine des coquilles Saint-Jacques est interdite du 15 mai au 30 septembre et ne peut être pratiquée qu’à la main.",
+        "token_estimate": 23,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - restrictions temporelles"
+      },
+      {
+        "chunk_index": 3,
+        "chunk_hash": "f93636631e0b46dfa093a84676f189e34d8dcb6507b66d9b301c00c35391ecd3",
+        "text_excerpt": "o La pêche sous-marine des coquilles Saint-Jacques est interdite du 15 mai au 30",
+        "token_estimate": 14,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - restrictions par espece"
+      },
+      {
+        "chunk_index": 4,
+        "chunk_hash": "3a73a95540d9917374e574fbb770d37beda2e3d423e1a0c176b35369afdbe46b",
+        "text_excerpt": " La pêche de loisir de la dorade rose (Pagellus bogaraveo) est interdite.",
+        "token_estimate": 13,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - restrictions par espece"
+      },
+      {
+        "chunk_index": 5,
+        "chunk_hash": "b33742b0deb0cd7ed90dc2445fa0f5979d9b610780050fdc2a1c40865e80ab3c",
+        "text_excerpt": "d’un ciseau à bois ou d’un burin dont la longueur totale ne peut excéder 50 cm",
+        "token_estimate": 16,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 6,
+        "chunk_hash": "a9173d6c1753b9df7fdcdab046f757fabf3a18de7ca0c29c768451bf39c890c5",
+        "text_excerpt": "et la largeur 5 cm, tout autre engin est interdit. La pêche est limitée à une",
+        "token_estimate": 16,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 7,
+        "chunk_hash": "7d27e9093e825e5a3723faac437520b9b8db7851015f8afc9d2c6c3d30cbc967",
+        "text_excerpt": "quantité totale de 3 kg de pouces-pieds par pêcheur et par jour.",
+        "token_estimate": 12,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - quotas peche de loisir"
+      },
+      {
+        "chunk_index": 8,
+        "chunk_hash": "9a085106764a3d4645eab5fb4b41c85d1bf47a47c692ded8c3747ecd80fad9c9",
+        "text_excerpt": " La pêche de loisir de la raie brunette ( Raja undulata ) est interdite dans la zone CIEM",
+        "token_estimate": 19,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - restrictions par espece"
+      },
+      {
+        "chunk_index": 9,
+        "chunk_hash": "e65a973d834d68da22ada73d2c985d9b63d21b7a7aaece852b65013493b705b4",
+        "text_excerpt": "ut temps, remettre sur le champ dans leur position initiale les pierres quils ont deplacees ou renversees. restrictions relatives aux especes o la peche sous-marine des crustaces ne peut etre pratiquee qua la main. o la peche sous-marine des araignees est limitee a six unites par pecheur et par jour en dehors de la periode dinterdiction de peche fixee par arrete prefectoral. peche des araignees dun poids unitaire inferieur a 0,5 kg interdite. arrete du prefet de la region bretagne n127/92 du 28 octobre 1992 portant",
+        "token_estimate": 86,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - quotas peche de loisir"
+      },
+      {
+        "chunk_index": 10,
+        "chunk_hash": "7293efa571aaa737d328ee5444ff982c261ccc9c3c4e68cdbdfb8058f71d2a6a",
+        "text_excerpt": "trutta) en zone maritime est interdite Arrêté du préfet de la région Bretagne n° R53-2024-12-31-00009 du 31 décembre 2024 réglementant l’exercice de la pêche maritime des poissons migrateurs et de la pêche en estuaires en Bretagne ➔ Interdiction de pêcher avec un dispositif lumineux Article 204 du décret du 4 juillet 1853 portant règlement sur la pêche maritime côtière dans le 2ème arrondissement maritime (arrondissement de Brest) Article 211 du décret du 4 juillet 1853 portant règlement sur la pêche maritime côtière dans le 3ème arrondissement maritime (arrondissement de Lorient ➔ Interdiction de toute forme de pêche du bar chaque année du 1 er mars au 31 mai au large du Cap Fréhel dans...",
+        "token_estimate": 114,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - restrictions temporelles"
+      },
+      {
+        "chunk_index": 11,
+        "chunk_hash": "3e20b562df286050713579b4458cdfbfa9efdba62fb395e120b28bde1f7ed48c",
+        "text_excerpt": "u finistere , la peche de loisir des pouces-pieds sexerce a laide dun ciseau a bois ou dun burin dont la longueur totale ne peut exceder 50 cm et la largeur 5cm, tout autre engin est interdit. la peche est limitee a une quantite totale de 3kg de pouces-pieds par pecheur et par jour. arrete du prefet de la region bretagne n r53-2022-04-05-00001 du 5 avril 2022 reglementant lexercice de la peche de loisir des pouces-pieds sur le littoral du departement du finistere ille-et-vilaine sur le barrage de",
+        "token_estimate": 88,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - quotas peche de loisir"
+      },
+      {
+        "chunk_index": 12,
+        "chunk_hash": "63f5e9e9dc2618df4a7b0fad18ad08cea2ec5a49ac43415f16768862fa17ee0a",
+        "text_excerpt": "Arrêté du préfet de la région Bretagne n°325/97 du 15 octobre 1997 réglementant l’usage des casiers à crustacés pour la pêche maritime de loisir le long du littoral de la région Bretagne  La pêche des anatifes communément appelés pouces-pieds, exercée en bateau ou à pied sur le littoral de la région Bretagne, à l’exclusion du département du Morbihan, est interdite du 1er janvier au 15 janvier, du 15 mars au 15 septembre et du 15 novembre au 31 décembre de chaque année.",
+        "token_estimate": 83,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - restrictions temporelles"
+      },
+      {
+        "chunk_index": 13,
+        "chunk_hash": "cca84f6c001b5a58132d71946726e636fb3ced2301f00bedfff72d77011b6453",
+        "text_excerpt": "turel avec absence de degradation des habitats naturels sensibles et absence de derangement et datteinte pour la faune et la flore marine sans prejudice des reglementations specifiques a chaque espece en la matiere, les captures sont limitees par pecheur et par jour a 5 kilogrammes toutes especes marines confondues. decret n 2023-640 du 19 juillet 2023 portant redefinition du perimetre et de la reglementation de la reserve naturelle nationale des sept-iles (cotes-darmor) arrete du prefet de la region bretagne n1",
+        "token_estimate": 80,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - quotas peche de loisir"
+      }
+    ]
+  },
+  {
+    "document_hash": "6b7ec1adf41227609e1dd0a44bdaf412e106ca072c6a48bba83086ed76ed07b6",
+    "source_url": "https://www.dirm.nord-atlantique-manche-ouest.developpement-durable.gouv.fr/IMG/pdf/reglementation_peche_loisir_pdl_2025_01_cle0432e1.pdf",
+    "canonical_url": "https://www.dirm.nord-atlantique-manche-ouest.developpement-durable.gouv.fr/IMG/pdf/reglementation_peche_loisir_pdl_2025_01_cle0432e1.pdf",
+    "source_type": "DIRM",
+    "authority_name": "DIRM Nord Atlantique Manche Ouest",
+    "title": "Synthese reglementation peche de loisir Pays de la Loire",
+    "document_type": "pdf",
+    "content_length": 2553,
+    "fetched_at": null,
+    "checked_at": "2026-04-29T17:10:45.608116+00:00",
+    "rule_keys": [
+      "species.bar.closure.1-er-janvier.15-janvier.bretagne",
+      "species.lieu-jaune.closure.1-er-janvier.15-janvier.bretagne",
+      "species.pouces-pieds.closure.1-er-janvier.15-janvier.bretagne",
+      "species.pouces-pieds.closure.1-er-janvier.15-janvier.pays-de-la-loire",
+      "species.raie-brunette.protected.namo.57a9f4f00f"
+    ],
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "chunk_hash": "b11efa5c7342f184185ff30d2fe6e4aba62dd4ac86e3be7d79bcabef3736564a",
+        "text_excerpt": " La pêche de loisir de la raie brunette (Raja undulata) est interdite.",
+        "token_estimate": 13,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - restrictions par espece"
+      },
+      {
+        "chunk_index": 1,
+        "chunk_hash": "1f54516a842f1f79db578b07ebaf421c824823775179a3e1abc8d8c92d4dfee9",
+        "text_excerpt": "Article R921-88 du CRPM Arrêté du directeur des affaires maritimes Bretagne/Vendée n°7 du 15 février 1974 fixant les caractéristiques et les modalités particulières d’emploi des engins de pêche autorisés à bord des navires de plaisance assujettis à l’obligation d’un titre de navigation ainsi qu’à bord des navires assujettis à l’obligation d’un permis de circulation  Dispositions spécifiques à certaines espèces ➔ La pêche du bar (voir article dédié sur le site de la DIRM NAMO) ➔ La pêche du lieu jaune (voir article dédié sur le site de la DIRM NAMO) ➔ La pêche des anatifes communément appelés pouces-pieds, exercée en bateau ou à pied sur le littoral de la région Pays de la Loire est inter...",
+        "token_estimate": 117,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - restrictions temporelles"
+      },
+      {
+        "chunk_index": 2,
+        "chunk_hash": "f44af62017ff973bbfbe563c21d099abf85e994f0fce9665bb4235cad4bad453",
+        "text_excerpt": "Article R921-88 du CRPM Arrêté du directeur des affaires maritimes Bretagne/Vendée n°7 du 15 février 1974 fixant les caractéristiques et les modalités particulières d’emploi des engins de pêche autorisés à bord des navires de plaisance assujettis à l’obligation d’un titre de navigation ainsi qu’à bord des navires assujettis à l’obligation d’un permis de circulation  Dispositions spécifiques à certaines espèces ➔ La pêche du bar (voir article dédié sur le site de la DIRM NAMO) ➔ La pêche du lieu jaune (voir article dédié sur le site de la DIRM NAMO) ➔ La pêche des anatifes communément appelés pouces-pieds, exercée en bateau ou à pied sur le littoral de la région Pays de la Loire est inter...",
+        "token_estimate": 117,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - restrictions temporelles"
+      },
+      {
+        "chunk_index": 3,
+        "chunk_hash": "6bf95701a3fb88bf040f9d03d129f1783befbda0e062167b3ccb24527c612dfe",
+        "text_excerpt": "Article R921-88 du CRPM Arrêté du directeur des affaires maritimes Bretagne/Vendée n°7 du 15 février 1974 fixant les caractéristiques et les modalités particulières d’emploi des engins de pêche autorisés à bord des navires de plaisance assujettis à l’obligation d’un titre de navigation ainsi qu’à bord des navires assujettis à l’obligation d’un permis de circulation  Dispositions spécifiques à certaines espèces ➔ La pêche du bar (voir article dédié sur le site de la DIRM NAMO) ➔ La pêche du lieu jaune (voir article dédié sur le site de la DIRM NAMO) ➔ La pêche des anatifes communément appelés pouces-pieds, exercée en bateau ou à pied sur le littoral de la région Pays de la Loire est inter...",
+        "token_estimate": 117,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - restrictions temporelles"
+      },
+      {
+        "chunk_index": 4,
+        "chunk_hash": "5001f359ad2b47009c5eb2c84f43e925e12351899bdb2cd9d0ed060324e13ff3",
+        "text_excerpt": "Arrêté du préfet de région Pays de la Loire n°31/2014 réglementant l’usage de la palangre dans la zone de balancement des marées ➔ La pêche des anatifes communément appelés pouces-pieds, exercée en bateau ou à pied sur le littoral de la région Pays de la Loire est interdite du 1 er janvier au 15 janvier, du 15 mars au 15 septembre et du 15 novembre au 31 décembre de chaque année.",
+        "token_estimate": 71,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - restrictions temporelles"
+      }
+    ]
+  },
+  {
+    "document_hash": "88ab1cac28df29d101f3a1e2b1ee20817f30af40f81fe4e8e5a182dae03ef259",
+    "source_url": "https://www.dirm.nord-atlantique-manche-ouest.developpement-durable.gouv.fr/IMG/pdf/taille_minimale_de_captures_des_poissons_crustaces_et_mollusques_01-2026_cle71aa21.pdf",
+    "canonical_url": "https://www.dirm.nord-atlantique-manche-ouest.developpement-durable.gouv.fr/IMG/pdf/taille_minimale_de_captures_des_poissons_crustaces_et_mollusques_01-2026_cle71aa21.pdf",
+    "source_type": "DIRM",
+    "authority_name": "DIRM Nord Atlantique Manche Ouest",
+    "title": "DIRM NAMO - Tailles minimales et rappels peche de loisir",
+    "document_type": "pdf",
+    "content_length": 2257,
+    "fetched_at": null,
+    "checked_at": "2026-04-29T17:10:45.607651+00:00",
+    "rule_keys": [
+      "species.alose.min-size.namo",
+      "species.anchois.min-size.namo",
+      "species.bar.min-size.namo",
+      "species.barbue.min-size.namo",
+      "species.cabillaud.min-size.namo",
+      "species.cardine.min-size.namo",
+      "species.chapon.min-size.namo",
+      "species.chinchard.min-size.namo",
+      "species.clovisse.min-size.namo",
+      "species.congre.min-size.namo",
+      "species.coquilles-saint-jacques.min-size.namo",
+      "species.corb.min-size.namo",
+      "species.couteau.min-size.namo",
+      "species.eglefin.min-size.namo",
+      "species.espadon.min-size.namo",
+      "species.etrille.min-size.namo",
+      "species.flet.min-size.namo",
+      "species.hareng.min-size.namo",
+      "species.homard.min-size.namo",
+      "species.huitre-creuse.min-size.namo",
+      "species.huitre-plate.min-size.namo",
+      "species.langouste.min-size.namo",
+      "species.langoustine.min-size.namo",
+      "species.lieu-jaune.min-size.namo",
+      "species.lieu-noir.min-size.namo",
+      "species.limande-sole.min-size.namo",
+      "species.limande.min-size.namo",
+      "species.lingue-bleue.min-size.namo",
+      "species.lingue.min-size.namo",
+      "species.lotte.min-size.namo",
+      "species.mactre-solide.min-size.namo",
+      "species.maigre.min-size.namo",
+      "species.makaire-blanc.min-size.namo",
+      "species.makaire-bleu.min-size.namo",
+      "species.maquereau.min-size.memn",
+      "species.maquereau.min-size.namo",
+      "species.merlan.min-size.namo",
+      "species.merlu.min-size.namo",
+      "species.mostelle.min-size.namo",
+      "species.moule.min-size.namo",
+      "species.mulet.min-size.namo",
+      "species.ormeaux.min-size.namo",
+      "species.orphie.min-size.namo",
+      "species.oursin-region-bretagne.min-size.bretagne",
+      "species.oursin.min-size.namo",
+      "species.palourde-europeenne.min-size.namo",
+      "species.palourde-japonaise.min-size.namo",
+      "species.palourde-rose.min-size.namo",
+      "species.queue-de-langoustine.min-size.namo",
+      "species.raie-brunette.min-size.namo",
+      "species.rajiformes.min-size.namo",
+      "species.rougets.min-size.namo",
+      "species.sar-commun.min-size.namo",
+      "species.sardine.min-size.namo",
+      "species.saumon.min-size.namo",
+      "species.sole.min-size.namo",
+      "species.tourteau.min-size.namo",
+      "species.truite-de-mer.min-size.namo",
+      "species.turbot.min-size.namo",
+      "species.vanneau-ou-petoncle.min-size.namo",
+      "species.venus.min-size.namo"
+    ],
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "chunk_hash": "9ea0f1e2aa03d21c037697476bfa185e7b1d353b9fb51a6cdb6dcf559acdc671",
+        "text_excerpt": "Maquereau -mer du Nord(Scomber spp) : 30 cm",
+        "token_estimate": 8,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 1,
+        "chunk_hash": "1957d7f74f2835caa090d9a8da20a474e3871c7b295756ee2b80f989e9dd65b1",
+        "text_excerpt": "Alose (Alosa spp.) : 30 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 2,
+        "chunk_hash": "58a3eb7d580f5d4c375e1e8df1b24a561aceb5ebb895a32fb139837da6ed0b0a",
+        "text_excerpt": "Anchois (Engraulis encrasicolus) : 12 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 3,
+        "chunk_hash": "b21785bb6c586a18c5eb331653822ea75ce8a9d5f856fbc86e4a11a1abe19681",
+        "text_excerpt": "Bar commun (Dicentrarchus labrax) : 42 cm",
+        "token_estimate": 7,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 4,
+        "chunk_hash": "5c2448d3042abcfadd3908ab9cfcb14b9c9139d18d4dac2b4b36dfb009eafa9f",
+        "text_excerpt": "Barbue (Scophtalmus rhombus) : 30 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 5,
+        "chunk_hash": "cc44b9e908ed38753733b7aabf197144b56c62475f70258477ede9698b3d5ad2",
+        "text_excerpt": "Cabillaud (Gadus morhua) : 42 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 6,
+        "chunk_hash": "67999280a7cc5daceb346b75cddc06475707909062c582ca8d8484c9ef9b9b63",
+        "text_excerpt": "Cardine (Lepidorhombus spp.) : 20 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 7,
+        "chunk_hash": "e7f896092409e0ced9acf40f5875193f7a69abc3e52fd7317f429bbca7866c3b",
+        "text_excerpt": "Chapon (Scorpaena scrofa) : 30 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 8,
+        "chunk_hash": "e01e0f02289ba2204d98b05ef778386182bc12be6691243d57c0f182a3481182",
+        "text_excerpt": "Chinchard (Trachurus spp.) : 15 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 9,
+        "chunk_hash": "994dda4f8e76f3ba66e2e3b1893bc9bd7378680de86c7060d106001a8d5773d1",
+        "text_excerpt": "Clovisse (Venerupis pullastra) : 4 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 10,
+        "chunk_hash": "312f41330ef56b15ee7857080e7bed243539b83e5f65940f18e48367aee82c3f",
+        "text_excerpt": "Congre (Conger conger) : 60 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 11,
+        "chunk_hash": "24b3112a91b0ce6f8235c04010ec63b17a72d9d13adc0d6bf7eaa92b43c06031",
+        "text_excerpt": "Coquille Saint-Jacques (Pecten maximus) : 11 cm",
+        "token_estimate": 7,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 12,
+        "chunk_hash": "9802c57066b7ce289555772e94b28eed1c4cdaf1a70155b200cf8761fa08b197",
+        "text_excerpt": "Corb (Sciaena umbra) : 35 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 13,
+        "chunk_hash": "32264ad0885c8dfacde8736919d1db8a78106778acb180639714bc80e9df4ec6",
+        "text_excerpt": "Couteau (Ensis spp., Pharus legumen, Solen spp.) : 10 cm",
+        "token_estimate": 10,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 14,
+        "chunk_hash": "3aee4c706e034ad7bc37fc6528c2a1192c82b1e1c7c2df21438dcce53c791d3b",
+        "text_excerpt": "Eglefin (Melanogrammus aeglefinus) : 30 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 15,
+        "chunk_hash": "94bee9136136c17c4bca19088ad8864f1b2334ad5fb2cd788e6df6014d446cbb",
+        "text_excerpt": "Espadon (Xiphias gladius) : 170 cm *(LJFL)",
+        "token_estimate": 7,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 16,
+        "chunk_hash": "349fac10c05a3011a85f251bb825cfe8c7edd63424ca7b60d7b3da019332f718",
+        "text_excerpt": "Étrille (Polybius henslowi, Necora puber) : 6,5 cm",
+        "token_estimate": 8,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 17,
+        "chunk_hash": "cc63f7f1c9490d45218b2b9a1d7e22a420eea015ffab4ac257dd50c2df52e659",
+        "text_excerpt": "Flet (Platichthys flesus) : 20 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 18,
+        "chunk_hash": "e1ea8cbb35a2470fdd778b409aaa37a392a3d392b1835ea7ceb2a8ff5bcf9fa0",
+        "text_excerpt": "Hareng (Clupea harengus) : 20 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 19,
+        "chunk_hash": "209d24a8434934ed1daa31b01d349581d89e7f70e4ef46e7f9df253d90830a67",
+        "text_excerpt": "Homard (Homarus gammarus) : 9 cm *(LC)",
+        "token_estimate": 7,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 20,
+        "chunk_hash": "3a2af0159d8e8d37853dafe7e04ee229e1b9c28a5bdcc3a8bdf5f2ed243b780f",
+        "text_excerpt": "Huître creuse (Crassostrea gigas) : 5 cm",
+        "token_estimate": 7,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 21,
+        "chunk_hash": "f79801a5aaa954a4600d6476fa9a226845b2c7b92ed7fefde4589b7cdecd9110",
+        "text_excerpt": "Huître plate (Ostrea edulis) : 6 cm",
+        "token_estimate": 7,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 22,
+        "chunk_hash": "1ee79792ac670a814bce3785619159c27aa5805b1d92ec0caf6342f4ce77a416",
+        "text_excerpt": "Langouste (Palinurus spp) : 11 cm *(LC)",
+        "token_estimate": 7,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 23,
+        "chunk_hash": "242d9bef44c10d0f5db4081d1f9042d2c6b729531b9ba828a8a37b4bdde2ebbc",
+        "text_excerpt": "Langoustine (Nephrops norvegicus) : 9 cm *(LT)",
+        "token_estimate": 7,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 24,
+        "chunk_hash": "2e72f1862a1c7aa4eba2a23bd290e2679e31c03821ff960768afd9c91d856b98",
+        "text_excerpt": "Lieu jaune (Pollachius pollachius) : 42 cm",
+        "token_estimate": 7,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 25,
+        "chunk_hash": "93715f2b3127a1fd7ba4f60c4a694e2ea995ac4ac630ad26750802a76f482f3a",
+        "text_excerpt": "Lieu noir (Pollachius virens) : 35 cm",
+        "token_estimate": 7,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 26,
+        "chunk_hash": "1f03a2db8385c8f0b768267a882e1e67edb11d97678a1bb43053ad07a34107fb",
+        "text_excerpt": "Limande (Limanda limanda) : 20 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 27,
+        "chunk_hash": "babf743bd2c13a00049dd928a6a125c8b396dff5b00a30c7555fc120895b3842",
+        "text_excerpt": "Limande sole (Microstomus kitt) : 25 cm",
+        "token_estimate": 7,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 28,
+        "chunk_hash": "7475eea1dfeb1476c0a249f43678a2a8f3783f6a91f19f59182ae8213e6c0e49",
+        "text_excerpt": "Lingue (Molva molva) : 63 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 29,
+        "chunk_hash": "15c6a9a1fa135347d2f5443aab2a3aa6d4235d1febdc7111e818c439f6e86d82",
+        "text_excerpt": "Lingue bleue (Molva dipterygia) : 70 cm",
+        "token_estimate": 7,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 30,
+        "chunk_hash": "d513eb9c906d527e6cc0189c9a8e4c0b2b8222686cbcd7db05100ef1ee1665d7",
+        "text_excerpt": "Lotte (Lophius piscatorius) : 50 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 31,
+        "chunk_hash": "105b4b1c734730d1883361385ff81994224ad55a6b5db55c574c64e2df9905a7",
+        "text_excerpt": "Mactre solide (Spisula solida) : 2,5 cm",
+        "token_estimate": 7,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 32,
+        "chunk_hash": "cf2c456ee886614e1c151fb0697d1fb38b7e19f3a428ac5aae02ba1850f55654",
+        "text_excerpt": "Maigre (Argyrosomus regius) : 50 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 33,
+        "chunk_hash": "03433e9f3c0de31d3f10a75c29c45e1873f83f1e8a7732b08e9db88a287f5fd7",
+        "text_excerpt": "Makaire blanc (Tetrapturus spp.) : 168 cm *(LJFL)",
+        "token_estimate": 8,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 34,
+        "chunk_hash": "7b920957561b9ba0d75631201a0a69713ab65b7949de8289ccaf858725454752",
+        "text_excerpt": "Makaire bleu (Makaira nigricans) : 251 cm *(LJFL)",
+        "token_estimate": 8,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 35,
+        "chunk_hash": "f62a7b9ffd4806aa9424ffbe2946f07d9913ea61dfa86d7121a05a1430c2500e",
+        "text_excerpt": "Maquereau (Scomber spp.) : 20 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 36,
+        "chunk_hash": "46c10feeb30500f5aff02a256f4f23c34a30acd233e6452944895dc94cc63a1a",
+        "text_excerpt": "Merlan (Merlangius merlangus) : 27 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 37,
+        "chunk_hash": "55f8a742feda4a4e2b42273ac361bef14262ce47a748450fe2d121bd99422798",
+        "text_excerpt": "Merlu (Merluccius merluccius) : 27 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 38,
+        "chunk_hash": "9b1c85701ab59ad19170a440c61175891a051f9dd75ebb145f8d9e464d4736e8",
+        "text_excerpt": "Mostelle (Phycis spp.) : 30 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 39,
+        "chunk_hash": "56d4c8285f85c16f799c9970206e31f706ece3b01b808d1d76980ec40031ea5e",
+        "text_excerpt": "Moule (Mytilus edulis) : 4 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 40,
+        "chunk_hash": "cd05e05a1a0094d618c8c2b67ede6419f36d83ea26f0aac8fe042127e37ea59d",
+        "text_excerpt": "Mulet (Mugil spp.) : 30 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 41,
+        "chunk_hash": "ac31d5338d7374b78f704cc20a285a0edae66b4f4cfa3747243192c040eb13d8",
+        "text_excerpt": "Ormeau (Haliotis spp.) : 9 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 42,
+        "chunk_hash": "516640d6d345c8670d586c8239c8a07e77403756b3e24995925a51bba7558d9d",
+        "text_excerpt": "Orphie (Belone spp.) : 30 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 43,
+        "chunk_hash": "6ebc74fb428ab1d5339729d9d929b1fe98dd217db5b3c3c4f8c69360f0a78678",
+        "text_excerpt": "Oursin (Paracentrotus lividus) : 4 cm (piquants exclus)",
+        "token_estimate": 8,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 44,
+        "chunk_hash": "e6c41fab3dadba5443a58346ac88d9ae2aa8589f41a681be30fd6eafff711b0f",
+        "text_excerpt": "Palourde européenne (Ruditapes decussatus) : 4 cm",
+        "token_estimate": 7,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 45,
+        "chunk_hash": "410ea8d17cf1267c1ac5b207716afdd1f0da4701a93fbb63f4a4a32bc69439b4",
+        "text_excerpt": "Palourde japonaise (Ruditapes philipinarum) : 3,5 cm",
+        "token_estimate": 7,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 46,
+        "chunk_hash": "6b31cd6a4fecc29c92f4e8f578cb1cdfa15114f816a2c724f38e7dbda25fb3bd",
+        "text_excerpt": "Palourde rose (Venerupis rhomboides) : 4 cm",
+        "token_estimate": 7,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 47,
+        "chunk_hash": "f8d7d5ce90471ce2fc966d6cb6cda06ffa39ebdf9671fea1f6513d476237f76a",
+        "text_excerpt": "Queue de langoustine : 4,6 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 48,
+        "chunk_hash": "5ba2ca2373b3fb860e4095bf6deac42cc067145dbcb80ebaa240b4e07ea85728",
+        "text_excerpt": "Raie brunette (Raja undulata) : 78 cm",
+        "token_estimate": 7,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 49,
+        "chunk_hash": "b2ba3157ef58388babbd326dc50edd92f9ef23c82a4dbb06dfdd703330f395cb",
+        "text_excerpt": "Rajiformes : 45 cm",
+        "token_estimate": 4,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 50,
+        "chunk_hash": "ba617cd0cb52aa0f639273cd383bd51e776c1832c8369475739a2670181ba5a1",
+        "text_excerpt": "Rougets (Mullus spp) : 15 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 51,
+        "chunk_hash": "8491de584bf216fd561ef348d250c5b4ba741a6cd2f5f38bf197aa6d6f4d14c1",
+        "text_excerpt": "Sar commun (Diplodus sargus) : 25 cm",
+        "token_estimate": 7,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 52,
+        "chunk_hash": "4df6ba8d5b23fbef7a3fc4f26ecd4e957e441e166f56baf7dc004ee434f4ec67",
+        "text_excerpt": "Sardine (Sardina pilchardus) : 11 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 53,
+        "chunk_hash": "af0f06549b5e08f8987be2a01a2e973b8a7a0ef709b57825aefdabbbaf73b558",
+        "text_excerpt": "Saumon (Salmo salar) : 50 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 54,
+        "chunk_hash": "ce607eadc351925e695e97762c3cd0596977957ca16459473d289528a3d00c35",
+        "text_excerpt": "Sole (Solea spp.) : 25 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 55,
+        "chunk_hash": "2e70725a31feacadca181cfe43093a2c778b5cf65de79577cf0e2468f144ea9c",
+        "text_excerpt": "Tourteau (Cancer pagurus) : 15 cm *(LC)",
+        "token_estimate": 7,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 56,
+        "chunk_hash": "3ec15821f8580f20297b5da1592db3644d09cbbd51af3ce967474c91fb78dc9c",
+        "text_excerpt": "Truite de mer (Salmo trutta) : 35 cm",
+        "token_estimate": 8,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 57,
+        "chunk_hash": "3563372252d81924c85c3b2a4d58b9d86aa038f1df82a6d5258cf27bde129d5a",
+        "text_excerpt": "Turbot (Psetta maxima) : 30 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 58,
+        "chunk_hash": "448e33e7ccd54ca23a5b28497060e9b15238141c112d2e7e612fad2839fad99c",
+        "text_excerpt": "Vanneau ou pétoncle (Chlamys spp.) : 4 cm",
+        "token_estimate": 8,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 59,
+        "chunk_hash": "53ca51af1c3729c09caadd1b8694cdea5978571875995bc696fb94f2def7e1a6",
+        "text_excerpt": "Vénus (Spisula spp.) : 2,8 cm",
+        "token_estimate": 6,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      },
+      {
+        "chunk_index": 60,
+        "chunk_hash": "d716cbeca474f45b5435e3a026632934ba551209b8178f3a0e46374eaa0410a4",
+        "text_excerpt": "Oursin -région Bretagne- (Paracentrotus lividus) : 5,5 cm",
+        "token_estimate": 8,
+        "page_number": null,
+        "locator": "Arrete du 26 octobre 2012 modifie (rappels DIRM)"
+      }
+    ]
+  },
+  {
+    "document_hash": "aab2fa91fb6a5e75cddfdbb699e2a63edd22105e68f6664cde8a70739a963353",
+    "source_url": "https://www.dirm.nord-atlantique-manche-ouest.developpement-durable.gouv.fr/peche-de-loisir-du-bar-du-lieu-jaune-et-du-a585.html",
+    "canonical_url": "https://www.dirm.nord-atlantique-manche-ouest.developpement-durable.gouv.fr/peche-de-loisir-du-bar-du-lieu-jaune-et-du-a585.html",
+    "source_type": "DIRM",
+    "authority_name": "DIRM Nord Atlantique Manche Ouest",
+    "title": "Pêche de loisir du bar, du lieu jaune et du maquereau en Bretagne et Pays de la Loire",
+    "document_type": "html",
+    "content_length": 1842,
+    "fetched_at": null,
+    "checked_at": "2026-04-29T17:10:45.607714+00:00",
+    "rule_keys": [
+      "species.bar.closure.1-er-fevrier-2026.31-mars-2026.north-48n",
+      "species.bar.protected.namo.8d675e3fa8",
+      "species.bar.protected.namo.bd4b078a3e",
+      "species.bar.protected.north-48n.c997dd7787",
+      "species.bar.quota.captures-jour.south-48n",
+      "species.lieu-jaune.closure.1-er-janvier.30-avril.namo",
+      "species.lieu-jaune.quota.captures-jour.namo"
+    ],
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "chunk_hash": "94c51f60432f4d22deddb0e2c9988496ffe40dc533c9d6ecc556d64f08e8cd05",
+        "text_excerpt": "La pêche de bar à l'aide de filets fixes est interdite .",
+        "token_estimate": 12,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - restrictions par espece"
+      },
+      {
+        "chunk_index": 1,
+        "chunk_hash": "880c4aeb043a5f9281153e829bba19dba92f266e95879ffd47eb435bb6746579",
+        "text_excerpt": "La pêche de bar à l'aide de filets fixes est interdite.",
+        "token_estimate": 11,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - restrictions par espece"
+      },
+      {
+        "chunk_index": 2,
+        "chunk_hash": "6111d67f2fb97a44fc74ad62e5235e4ec92248cc6dfdca893f81fccc41e57e03",
+        "text_excerpt": "ar a laide de filets fixes est interdite . lieu jaune interdiction de la pratique du pecher-relacher. du 1 er janvier au 30 avril, aucun specimen de lieu jaune ne peut etre capture et detenu. du 1 er mai au 31 decembre, pas plus de deux specimens de lieu jaune ne peuvent etre captures et detenus par pecheur et par jour. maquereau la peche est limitee a 10 specimens , captures et detenus, par pecheur et par jour. carte du parallele 48n visualiser le parallele 48n sur une carte pdf - 998.9 kio taille minimale la taille minimale de conse",
+        "token_estimate": 100,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - quotas peche de loisir"
+      },
+      {
+        "chunk_index": 3,
+        "chunk_hash": "a862a7358a750d16bacb1ad26cfe1b499becc844743d26f93a18e7d69097de9a",
+        "text_excerpt": "Du 1 er janvier au 30 avril, aucun spécimen de lieu jaune ne peut être capturé et détenu.",
+        "token_estimate": 18,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - restrictions temporelles"
+      },
+      {
+        "chunk_index": 4,
+        "chunk_hash": "0e53d36988c0e965be175e8ff06ae11462904743bee12865f19db5cbaaa1beae",
+        "text_excerpt": "Bar Nord du parallèle 48°N Du 1 er février 2026 au 31 mars 2026 : la détention à bord, le transbordement, le transfert ou le débarquement de bar capturé dans les eaux de la zone économique européenne bordant les côtes françaises au nord du parallèle 48° N (divisions CIEM 4b et 4c et sous-zone CIEM 7) sont interdits.",
+        "token_estimate": 58,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - restrictions temporelles"
+      },
+      {
+        "chunk_index": 5,
+        "chunk_hash": "97fc5c8b7110005ec5c5a70c4a6e3b13b0c0cf6d764a33a1779fcd0578873df4",
+        "text_excerpt": "la détention à bord, le transbordement, le transfert ou le débarquement de bar capturé dans les eaux de la zone économique européenne bordant les côtes françaises au nord du parallèle 48° N (divisions CIEM 4b et 4c et sous-zone CIEM 7) sont interdits.",
+        "token_estimate": 43,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - restrictions par espece"
+      },
+      {
+        "chunk_index": 6,
+        "chunk_hash": "c20f0ec340084dd70bf81e4da0f4a9688c9b8d2b2d22b595c4cdcbf391f73084",
+        "text_excerpt": "nt interdits. seule la peche a la canne ou a la ligne a la main suivie dun relacher est autorisee dans cette zone, y compris depuis la cote. du 1 er janvier au 31 janvier 2026 et du 1 er avril 2026 au 31 decembre 2026 : pas plus de trois specimens de bar ne peuvent etre captures et detenus par pecheur et par jour, y compris depuis la cote. la peche de bar a laide de filets fixes est interdite. sud du parallele 48n dans les eaux de la zone economique europeenne bordant les cotes francaises au sud du parallele 48 n (divisions ciem",
+        "token_estimate": 105,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - quotas peche de loisir"
+      }
+    ]
+  },
+  {
+    "document_hash": "d2cf3fb289906f53f63a5eb5e37652e66be3886ce4b2c34de82528110d7f8912",
+    "source_url": "https://www.dirm.sud-atlantique.developpement-durable.gouv.fr/les-autorisations-de-peche-thon-rouge-de-loisir-a1271.html",
+    "canonical_url": "https://www.dirm.sud-atlantique.developpement-durable.gouv.fr/les-autorisations-de-peche-thon-rouge-de-loisir-a1271.html",
+    "source_type": "DIRM",
+    "authority_name": "DIRM Sud Atlantique",
+    "title": "Les autorisations de peche thon rouge de loisir",
+    "document_type": "html",
+    "content_length": 476,
+    "fetched_at": null,
+    "checked_at": "2026-04-29T17:10:45.608280+00:00",
+    "rule_keys": [
+      "species.thon-rouge.quota.captures-jour.sud-atlantique"
+    ],
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "chunk_hash": "ca19ed41357efd788d64a2e108f5804812cfbf1eea77962145faccd0402df479",
+        "text_excerpt": "la capture, du 1er juin 2021 au 15 novembre 2021 ; dans ce cadre, la capture et la detention du poisson a bord sont interdites. 2. lautorisation permettant de realiser la capture, la detention a bord et le debarquement dun thon rouge par navire et par jour, du samedi 3 juillet 2021 au dimanche 29 aout 2021 et du lundi 13 septembre 2021 au vendredi 1er octobre 2021 (deuxieme periode sous reserve de la disponibilite du quota) ; dans ce cadre, chaque thon doit etre marque im",
+        "token_estimate": 87,
+        "page_number": null,
+        "locator": "Document operationnel DIRM - quotas peche de loisir"
+      }
+    ]
+  },
+  {
+    "document_hash": "70595b12586a4a8eec6ef86631aaeb219e45c92724d5b67d287a8a0cf15e073d",
+    "source_url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000025393881",
+    "canonical_url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000025393881",
+    "source_type": "LEGIFRANCE",
+    "authority_name": "Legifrance",
+    "title": "Code du sport - Article A322-71",
+    "document_type": "html",
+    "content_length": 158,
+    "fetched_at": null,
+    "checked_at": "2026-04-29T17:10:45.607526+00:00",
+    "rule_keys": [
+      "diving.fr.code-sport.section-a322-71"
+    ],
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "chunk_hash": "e015d8cbdbdf95d330a17d364663a0aeefb925e3dd65932d7c6972c57f847ee0",
+        "text_excerpt": "Les dispositions de la presente section s'appliquent aux etablissements mentionnes a l'article L. 322-2 qui organisent la pratique de la plongee subaquatique.",
+        "token_estimate": 22,
+        "page_number": null,
+        "locator": "Code du sport - Article A322-71"
+      }
+    ]
+  },
+  {
+    "document_hash": "b95ac98c26c0301922ca5fcc7cf1281c24f9797261d1611b151d627250051ec2",
+    "source_url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000029978119",
+    "canonical_url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000029978119",
+    "source_type": "LEGIFRANCE",
+    "authority_name": "Legifrance",
+    "title": "Code rural et de la peche maritime - Article R921-90",
+    "document_type": "html",
+    "content_length": 117,
+    "fetched_at": null,
+    "checked_at": "2026-04-29T17:10:45.607537+00:00",
+    "rule_keys": [
+      "spearfishing.fr.min-age.fusil-harpon"
+    ],
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "chunk_hash": "1c7a1ff272a8447b667174f9ecaf550c1b37e43d9174b29b70d7f15317067bdd",
+        "text_excerpt": "L'exercice de la peche sous-marine au moyen d'un fusil-harpon est interdit aux personnes agees de moins de seize ans.",
+        "token_estimate": 19,
+        "page_number": null,
+        "locator": "Code rural et de la peche maritime - Article R921-90"
+      }
+    ]
+  },
+  {
+    "document_hash": "dd39f2b314b5eb0d1b10aa233dec3831b9adc1c9c0cd27ca559b3a6815a14cea",
+    "source_url": "https://www.mer.gouv.fr/peche-de-loisir-en-mer",
+    "canonical_url": "https://www.mer.gouv.fr/peche-de-loisir-en-mer",
+    "source_type": "MINISTERE_MER",
+    "authority_name": "Ministere de la Mer",
+    "title": "Peche de loisir en mer",
+    "document_type": "html",
+    "content_length": 303,
+    "fetched_at": null,
+    "checked_at": "2026-04-29T17:10:45.607496+00:00",
+    "rule_keys": [
+      "spearfishing.fr.ministere.age-minimum-en-peche-sous-marine",
+      "spearfishing.fr.ministere.interdiction-de-la-peche-sous-marine-de-nuit",
+      "species.bar.declaration.memn",
+      "species.dorade-coryphene.declaration.memn"
+    ],
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "chunk_hash": "a94f3d63d4217384fc8114b14f1926f82914f867ebce1019101002d07bbd103b",
+        "text_excerpt": "Certaines espèces sensibles, comme le bar européen, font l'objet de mesures de protection renforcées, comparables à celles appliquées en chasse pour des espèces fragiles.",
+        "token_estimate": 24,
+        "page_number": null,
+        "locator": "Reglement UE 2023/2842 et dispositifs nationaux d'application"
+      },
+      {
+        "chunk_index": 1,
+        "chunk_hash": "9603b3ef2f334311f4bce0ed8668f5a2522b7b1084818d349821e64d44689792",
+        "text_excerpt": "Dorade rose (Pagellus bogaraveo) :",
+        "token_estimate": 5,
+        "page_number": null,
+        "locator": "Reglement UE 2023/2842 et dispositifs nationaux d'application"
+      },
+      {
+        "chunk_index": 2,
+        "chunk_hash": "0b19f8ac5bcf48236e3fba34bd2d740c00403a22a0c0287c1825bf890f247a70",
+        "text_excerpt": "Avoir plus de 16 ans et une bonne condition physique.",
+        "token_estimate": 10,
+        "page_number": null,
+        "locator": "Page ministerielle peche de loisir en mer"
+      },
+      {
+        "chunk_index": 3,
+        "chunk_hash": "f56743a1c370a378a484fc08a95a39a12824524034c9ab9bddfc9091a8f74fb5",
+        "text_excerpt": "Ne pas pratiquer la peche sous-marine la nuit.",
+        "token_estimate": 8,
+        "page_number": null,
+        "locator": "Page ministerielle peche de loisir en mer"
+      }
+    ]
+  },
+  {
+    "document_hash": "9a5df2517fee7f30deed440f2e83261a6e2416bc8e71e3bdc4bfd8edb057aa40",
+    "source_url": "https://www.mer.gouv.fr/sites/default/files/2026-04/25048_peche-loisir-flyer2026_web.pdf",
+    "canonical_url": "https://www.mer.gouv.fr/sites/default/files/2026-04/25048_peche-loisir-flyer2026_web.pdf",
+    "source_type": "MINISTERE_MER",
+    "authority_name": "Ministere de la Mer",
+    "title": "Peche de loisir en mer",
+    "document_type": "pdf",
+    "content_length": 144,
+    "fetched_at": null,
+    "checked_at": "2026-04-29T17:10:45.607473+00:00",
+    "rule_keys": [
+      "species.bar.declaration.mediterranee",
+      "species.lieu-jaune.declaration.mediterranee"
+    ],
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "chunk_hash": "96696a953f7cd852aa167460e455421271653eb25298b384d774d24dbe80140b",
+        "text_excerpt": "Pour les pêcheurs à pied, uniquement ceux ciblant le bar.",
+        "token_estimate": 10,
+        "page_number": null,
+        "locator": "Reglement UE 2023/2842 et dispositifs nationaux d'application"
+      },
+      {
+        "chunk_index": 1,
+        "chunk_hash": "875ee6177db9a2fd6679ab0b68ef37922b9018140b9718725273f1e28bce13c0",
+        "text_excerpt": "lieu de capture, espèce capturée, quantité, technique de pêche utilisée, taille, poids.",
+        "token_estimate": 12,
+        "page_number": null,
+        "locator": "Reglement UE 2023/2842 et dispositifs nationaux d'application"
+      }
+    ]
+  }
+]

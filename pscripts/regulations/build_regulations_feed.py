@@ -40,7 +40,7 @@ OCR_LANG = os.environ.get("REG_OCR_LANG", "fra+eng")
 ENABLE_AI_AUDIT = os.environ.get("REG_ENABLE_AI_AUDIT", "false").lower() == "true"
 AI_API_KEY = os.environ.get("REG_AI_API_KEY") or os.environ.get("OPENAI_API_KEY")
 AI_BASE_URL = os.environ.get("REG_AI_BASE_URL", "https://openrouter.ai/api/v1").rstrip("/")
-AI_MODEL = os.environ.get("REG_AI_MODEL", "openrouter/free")
+AI_MODEL = os.environ.get("REG_AI_MODEL", "nvidia/nemotron-3-super-120b-a12b:free")
 AI_TIMEOUT_SECONDS = int(os.environ.get("REG_AI_TIMEOUT_SECONDS", "45"))
 AI_MAX_RULES = int(os.environ.get("REG_AI_MAX_RULES", "80"))
 HTTP_HEADERS = {

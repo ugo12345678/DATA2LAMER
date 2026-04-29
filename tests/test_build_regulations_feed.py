@@ -531,7 +531,7 @@ class BuildRegulationsFeedTests(unittest.TestCase):
         self.assertIn("error_code=503", summary)
 
     @patch("pscripts.regulations.build_regulations_feed.AI_API_KEY", "test-key")
-    @patch("pscripts.regulations.build_regulations_feed.AI_MODEL", "openrouter/free")
+    @patch("pscripts.regulations.build_regulations_feed.AI_MODEL", "nvidia/nemotron-3-super-120b-a12b:free")
     @patch("pscripts.regulations.build_regulations_feed.AI_BASE_URL", "https://openrouter.ai/api/v1")
     @patch("pscripts.regulations.build_regulations_feed.ENABLE_AI_AUDIT", True)
     @patch("pscripts.regulations.build_regulations_feed.requests.post")

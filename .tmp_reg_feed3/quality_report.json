@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-04-29T17:10:45.612419+00:00",
+  "rules_count": 106,
+  "needs_manual_review_count": 104,
+  "ai_confidence_count": 0,
+  "counts_by_type": {
+    "CLOSURE_PERIOD": 13,
+    "DIVING_GENERAL": 1,
+    "LOCAL_RESTRICTION": 9,
+    "MIN_SIZE": 63,
+    "PROTECTED_SPECIES": 9,
+    "QUOTA": 8,
+    "SPEARFISHING_GENERAL": 3
+  },
+  "counts_by_zone": {
+    "APP_ZONES_UNION": 8,
+    "FACADE_MEDITERRANEE": 1,
+    "FACADE_MEMN": 10,
+    "FACADE_NAMO": 73,
+    "FACADE_SUD_ATLANTIQUE": 1,
+    "REGION_BRETAGNE": 9,
+    "REGION_PAYS_DE_LA_LOIRE": 1,
+    "SECTEUR_NORD_48N": 2,
+    "SECTEUR_SUD_48N": 1
+  },
+  "issue_count": 0,
+  "issues": [],
+  "ai_audit": {
+    "enabled": true,
+    "status": "failed",
+    "model": "openrouter/free",
+    "error": "Aucun objet JSON exploitable dans la reponse IA.",
+    "response_summary": "keys=choices,created,id,model,object,provider,system_fingerprint,usage; object=chat.completion",
+    "rules_sent": 80,
+    "issues": [],
+    "attempt_count": 2
+  }
+}
