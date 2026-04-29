@@ -39,10 +39,10 @@ OCR_MAX_PAGES = int(os.environ.get("REG_OCR_MAX_PAGES", "8"))
 OCR_LANG = os.environ.get("REG_OCR_LANG", "fra+eng")
 ENABLE_AI_AUDIT = os.environ.get("REG_ENABLE_AI_AUDIT", "false").lower() == "true"
 AI_API_KEY = os.environ.get("REG_AI_API_KEY") or os.environ.get("OPENAI_API_KEY")
-AI_BASE_URL = os.environ.get("REG_AI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
-AI_MODEL = os.environ.get("REG_AI_MODEL", "gpt-4o-mini")
+AI_BASE_URL = os.environ.get("REG_AI_BASE_URL", "https://openrouter.ai/api/v1").rstrip("/")
+AI_MODEL = os.environ.get("REG_AI_MODEL", "openrouter/free")
 AI_TIMEOUT_SECONDS = int(os.environ.get("REG_AI_TIMEOUT_SECONDS", "45"))
-AI_MAX_RULES = int(os.environ.get("REG_AI_MAX_RULES", "120"))
+AI_MAX_RULES = int(os.environ.get("REG_AI_MAX_RULES", "80"))
 HTTP_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
