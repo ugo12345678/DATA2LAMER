@@ -33,7 +33,7 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       REG_AI_BASE_URL: ${{ vars.REG_AI_BASE_URL || 'https://openrouter.ai/api/v1' }}
       REG_AI_MODEL: ${{ vars.REG_AI_MODEL || 'openrouter/free' }}
-      REG_AI_MAX_RULES: ${{ vars.REG_AI_MAX_RULES || '80' }}
+      REG_AI_MAX_RULES: ${{ vars.REG_AI_MAX_RULES || '200' }}
       REG_ENABLE_PDF_OCR: ${{ vars.REG_ENABLE_PDF_OCR || 'false' }}
       REG_OCR_LANG: "fra+eng"
       REG_OCR_MIN_TEXT_CHARS: "900"

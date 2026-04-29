@@ -42,7 +42,7 @@ AI_API_KEY = os.environ.get("REG_AI_API_KEY") or os.environ.get("OPENAI_API_KEY"
 AI_BASE_URL = os.environ.get("REG_AI_BASE_URL", "https://openrouter.ai/api/v1").rstrip("/")
 AI_MODEL = os.environ.get("REG_AI_MODEL", "nvidia/nemotron-3-super-120b-a12b:free")
 AI_TIMEOUT_SECONDS = int(os.environ.get("REG_AI_TIMEOUT_SECONDS", "45"))
-AI_MAX_RULES = int(os.environ.get("REG_AI_MAX_RULES", "80"))
+AI_MAX_RULES = int(os.environ.get("REG_AI_MAX_RULES", "200"))
 HTTP_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -1272,7 +1272,7 @@ def extract_dirm_quota_rules(source: SourceRecord, source_url: str, text: str) -
         ),
         (
             re.compile(
-                r"^(?P<name>[a-z'\-\s]{3,})(?:\s*\((?P<scientific>[^)]+)\))?(?:\s+[a-z'\-\s]{0,80})?\s+(?P<value>\d+(?:[\.,]\d+)?)\s*(?P<unit>kg|kilogrammes?|unites?|specimens?|captures?)\b",
+                r"^(?P<name>[a-z'\-\s]{3,})(?:\s*\((?P<scientific>[^)]+)\))?(?:\s+[a-z'\-\s]{0,200})?\s+(?P<value>\d+(?:[\.,]\d+)?)\s*(?P<unit>kg|kilogrammes?|unites?|specimens?|captures?)\b",
                 flags=re.IGNORECASE,
             ),
             False,
