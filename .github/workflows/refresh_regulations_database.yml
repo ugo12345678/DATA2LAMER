@@ -1,16 +1,13 @@
-name: Sync Geospatial Regulations Links
+name: Refresh Regulations Database
 
 on:
-  workflow_run:
-    workflows: ["Forecast Predictions"]
-    types: [completed]
-    branches: [main]
+  schedule:
+    - cron: "17 4 * * *"
   workflow_dispatch:
 
 jobs:
-  sync-regulation-links:
+  refresh-regulations-database:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -22,6 +19,8 @@ jobs:
       REG_ENABLE_ZONES: ${{ vars.REG_ENABLE_ZONES || 'true' }}
       REG_ALLOW_SPOTS_FALLBACK_FOR_ZONE_UNION: ${{ vars.REG_ALLOW_SPOTS_FALLBACK_FOR_ZONE_UNION || 'true' }}
       REG_SOURCE_CATALOG_FILE: data/regulations/source_endpoints.json
+      REG_SOURCE_DISCOVERY_CONFIG_FILE: data/regulations/source_discovery_config.json
+      REG_DISCOVERED_SOURCES_FILE: data/regulations/generated_source_candidates.json
       REG_STATIC_LEGIFRANCE_RULES_FILE: data/regulations/static_legifrance_rules.json
       REG_GENERATED_RULES_FILE: data/regulations/generated_rules.json
       REG_GEOSPATIAL_RULES_FILE: data/regulations/generated_rules.json
@@ -34,6 +33,7 @@ jobs:
       REG_AI_BASE_URL: ${{ vars.REG_AI_BASE_URL || 'https://openrouter.ai/api/v1' }}
       REG_AI_MODEL: ${{ vars.REG_AI_MODEL || 'openrouter/free' }}
       REG_AI_MAX_RULES: ${{ vars.REG_AI_MAX_RULES || '200' }}
+      REG_DISCOVERY_ENABLE_AI_CLASSIFIER: ${{ vars.REG_DISCOVERY_ENABLE_AI_CLASSIFIER || 'false' }}
       REG_ENABLE_PDF_OCR: ${{ vars.REG_ENABLE_PDF_OCR || 'false' }}
       REG_OCR_LANG: "fra+eng"
       REG_OCR_MIN_TEXT_CHARS: "900"
@@ -59,11 +59,27 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-forecast.txt
 
-      - name: Run geospatial regulations unit tests
-        run: python -m unittest tests/test_sync_regulation_geospatial_links.py tests/test_build_regulations_feed.py -v
+      - name: Run regulations unit tests
+        run: python -m unittest tests/test_refresh_regulations_database.py tests/test_build_regulations_feed.py tests/test_discover_regulation_sources.py -v
+
+      - name: Restore incremental regulations cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/regulations/source_fetch_state.json
+            data/regulations/generated_rules.json
+            data/regulations/generated_rule_candidates.json
+            data/regulations/source_documents_manifest.json
+            data/regulations/generated_source_candidates.json
+          key: regulations-feed-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            regulations-feed-${{ github.ref_name }}-
+
+      - name: Discover regulation source candidates
+        run: python -m pscripts.regulations.discover_regulation_sources
 
       - name: Build regulations feed from official sources
         run: python -m pscripts.regulations.build_regulations_feed
 
-      - name: Sync regulations links to spots/zones
-        run: python -m pscripts.sync_regulation_geospatial_links
+      - name: Sync regulations database
+        run: python -m pscripts.refresh_regulations_database

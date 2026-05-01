@@ -1,0 +1,162 @@
+{
+  "current_year_window": [-1, 0, 1, 2],
+  "min_auto_accept_score": 12,
+  "max_pages_per_seed": 40,
+  "max_candidates_per_seed": 40,
+  "keywords": [
+    "peche de loisir",
+    "peche maritime de loisir",
+    "reglementation",
+    "arrete",
+    "capture",
+    "taille minimale",
+    "quota",
+    "thon rouge",
+    "bar",
+    "lieu jaune",
+    "maquereau",
+    "declaration",
+    "enregistrement",
+    "recfishing",
+    "peche sous-marine",
+    "peche a pied"
+  ],
+  "negative_keywords": [
+    "accessibilite",
+    "contact",
+    "mentions-legales",
+    "newsletter",
+    "recrutement",
+    "marche-public"
+  ],
+  "domains": [
+    {
+      "host": "www.dirm.nord-atlantique-manche-ouest.developpement-durable.gouv.fr",
+      "source_type": "DIRM",
+      "authority_name": "DIRM Nord Atlantique Manche Ouest",
+      "source_priority": 2,
+      "seed_urls": [
+        "https://www.dirm.nord-atlantique-manche-ouest.developpement-durable.gouv.fr/peche-de-loisir-r61.html"
+      ],
+      "sitemap_urls": [
+        "https://www.dirm.nord-atlantique-manche-ouest.developpement-durable.gouv.fr/sitemap.xml"
+      ]
+    },
+    {
+      "host": "www.dirm.memn.developpement-durable.gouv.fr",
+      "source_type": "DIRM",
+      "authority_name": "DIRM Manche Est Mer du Nord",
+      "source_priority": 2,
+      "seed_urls": [
+        "https://www.dirm.memn.developpement-durable.gouv.fr/reglementation-europeenne-et-nationale-r399.html"
+      ],
+      "sitemap_urls": [
+        "https://www.dirm.memn.developpement-durable.gouv.fr/sitemap.xml"
+      ]
+    },
+    {
+      "host": "www.dirm.mediterranee.developpement-durable.gouv.fr",
+      "source_type": "DIRM",
+      "authority_name": "DIRM Mediterranee",
+      "source_priority": 2,
+      "seed_urls": [
+        "https://www.dirm.mediterranee.developpement-durable.gouv.fr/peche-de-loisir-r18.html",
+        "https://www.dirm.mediterranee.developpement-durable.gouv.fr/reglementation-de-la-peche-maritime-de-loisir-r74.html"
+      ],
+      "sitemap_urls": [
+        "https://www.dirm.mediterranee.developpement-durable.gouv.fr/sitemap.xml"
+      ]
+    },
+    {
+      "host": "www.dirm.sud-atlantique.developpement-durable.gouv.fr",
+      "source_type": "DIRM",
+      "authority_name": "DIRM Sud Atlantique",
+      "source_priority": 2,
+      "seed_urls": [
+        "https://www.dirm.sud-atlantique.developpement-durable.gouv.fr/la-gestion-des-autorisations-de-peche-a1344.html",
+        "https://www.dirm.sud-atlantique.developpement-durable.gouv.fr/les-autorisations-de-peche-thon-rouge-de-loisir-a1271.html"
+      ],
+      "sitemap_urls": [
+        "https://www.dirm.sud-atlantique.developpement-durable.gouv.fr/sitemap.xml"
+      ]
+    },
+    {
+      "host": "www.premar-atlantique.gouv.fr",
+      "source_type": "PREFECTURE_MARITIME",
+      "authority_name": "Prefecture maritime de l'Atlantique",
+      "source_priority": 2,
+      "seed_urls": [
+        "https://www.premar-atlantique.gouv.fr/arretes?motcle=p%C3%AAche&sort=a.dateSignature&direction=desc"
+      ],
+      "sitemap_urls": []
+    },
+    {
+      "host": "www.premar-manche.gouv.fr",
+      "source_type": "PREFECTURE_MARITIME",
+      "authority_name": "Prefecture maritime de la Manche et de la mer du Nord",
+      "source_priority": 2,
+      "seed_urls": [
+        "https://www.premar-manche.gouv.fr/arretes.html?motcle=p%C3%AAche&sort=a.dateSignature&direction=desc"
+      ],
+      "sitemap_urls": []
+    },
+    {
+      "host": "www.premar-mediterranee.gouv.fr",
+      "source_type": "PREFECTURE_MARITIME",
+      "authority_name": "Prefecture maritime de la Mediterranee",
+      "source_priority": 2,
+      "seed_urls": [
+        "https://www.premar-mediterranee.gouv.fr/arretes?motcle=p%C3%AAche&sort=a.dateSignature&direction=desc"
+      ],
+      "sitemap_urls": []
+    },
+    {
+      "host": "www.finistere.gouv.fr",
+      "source_type": "PREFECTURE_DEPARTEMENTALE",
+      "authority_name": "Prefecture du Finistere",
+      "source_priority": 2,
+      "seed_urls": [
+        "https://www.finistere.gouv.fr/Actions-de-l-Etat/Mer-littoral-et-securite-maritime/Peche-de-loisir"
+      ],
+      "sitemap_urls": [
+        "https://www.finistere.gouv.fr/sitemap.xml"
+      ]
+    },
+    {
+      "host": "www.cotes-darmor.gouv.fr",
+      "source_type": "PREFECTURE_DEPARTEMENTALE",
+      "authority_name": "Prefecture des Cotes-d'Armor",
+      "source_priority": 2,
+      "seed_urls": [
+        "https://www.cotes-darmor.gouv.fr/Actions-de-l-Etat/Mer-littoral-et-securite-maritime/Activites-de-loisir-Plaisance/Peche/Peche-embarquee-a-pieds-ou-sous-marine"
+      ],
+      "sitemap_urls": [
+        "https://www.cotes-darmor.gouv.fr/sitemap.xml"
+      ]
+    },
+    {
+      "host": "www.ille-et-vilaine.gouv.fr",
+      "source_type": "PREFECTURE_DEPARTEMENTALE",
+      "authority_name": "Prefecture d'Ille-et-Vilaine",
+      "source_priority": 2,
+      "seed_urls": [
+        "https://www.ille-et-vilaine.gouv.fr/Actions-de-l-Etat/Mer-littoral-et-securite-maritime/Plaisance-peche-de-loisir-et-loisirs-nautiques/Reglementation-Peche-maritime-de-loisir"
+      ],
+      "sitemap_urls": [
+        "https://www.ille-et-vilaine.gouv.fr/sitemap.xml"
+      ]
+    },
+    {
+      "host": "www.morbihan.gouv.fr",
+      "source_type": "PREFECTURE_DEPARTEMENTALE",
+      "authority_name": "Prefecture du Morbihan",
+      "source_priority": 2,
+      "seed_urls": [
+        "https://www.morbihan.gouv.fr/Actions-de-l-Etat/Mer-littoral-et-securite-maritime/Activites-de-loisir/Peche-de-loisir"
+      ],
+      "sitemap_urls": [
+        "https://www.morbihan.gouv.fr/sitemap.xml"
+      ]
+    }
+  ]
+}

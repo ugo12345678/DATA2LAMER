@@ -23,9 +23,12 @@ jobs:
       REG_ENABLE_AI_AUDIT: ${{ inputs.ai_enabled }}
       REG_AI_API_KEY: ${{ secrets.REG_AI_API_KEY }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      REG_SOURCE_DISCOVERY_CONFIG_FILE: data/regulations/source_discovery_config.json
+      REG_DISCOVERED_SOURCES_FILE: data/regulations/generated_source_candidates.json
       REG_AI_BASE_URL: ${{ vars.REG_AI_BASE_URL || 'https://openrouter.ai/api/v1' }}
       REG_AI_MODEL: ${{ vars.REG_AI_MODEL || 'openrouter/free' }}
       REG_AI_MAX_RULES: ${{ vars.REG_AI_MAX_RULES || '200' }}
+      REG_DISCOVERY_ENABLE_AI_CLASSIFIER: ${{ vars.REG_DISCOVERY_ENABLE_AI_CLASSIFIER || 'false' }}
       REG_ENABLE_PDF_OCR: "false"
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY || secrets.SUPABASE_KEY }}
@@ -51,6 +54,22 @@ jobs:
       - name: Run tests
         run: python -m unittest discover -s tests
 
+      - name: Restore incremental regulations cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/regulations/source_fetch_state.json
+            data/regulations/generated_rules.json
+            data/regulations/generated_rule_candidates.json
+            data/regulations/source_documents_manifest.json
+            data/regulations/generated_source_candidates.json
+          key: regulations-feed-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            regulations-feed-${{ github.ref_name }}-
+
+      - name: Discover regulation source candidates
+        run: python -m pscripts.regulations.discover_regulation_sources
+
       - name: Build regulations feed
         run: python -m pscripts.regulations.build_regulations_feed
 
@@ -63,7 +82,9 @@ jobs:
             data/regulations/quality_report.json
             data/regulations/generated_rule_candidates.json
             data/regulations/source_documents_manifest.json
+            data/regulations/generated_source_candidates.json
+            data/regulations/source_fetch_state.json
 
       - name: Sync regulations to Supabase
         if: ${{ inputs.sync_to_supabase }}
-        run: python -m pscripts.sync_regulation_geospatial_links
+        run: python -m pscripts.refresh_regulations_database

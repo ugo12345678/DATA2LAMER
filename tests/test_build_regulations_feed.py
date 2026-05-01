@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 from pscripts.regulations.build_regulations_feed import (
@@ -39,7 +40,9 @@ from pscripts.regulations.build_regulations_feed import (
     quote_matches_source_context,
     resolve_rule_zone,
     run_ai_rule_audit,
+    should_recheck_document,
     source_context_window,
+    source_document_hash_for_rule,
     should_try_pdf_ocr,
     summarize_ai_response_payload,
     validate_rule_set,
@@ -812,6 +815,41 @@ class BuildRegulationsFeedTests(unittest.TestCase):
         self.assertEqual(enriched["citations"][0]["source_excerpt"], "Bar commun : 42 cm")
         self.assertIn("Bar commun : 42 cm", enriched["citations"][0]["source_context"])
         self.assertEqual(enriched["candidate"]["rule_key"], "species.bar.min-size.namo")
+
+    def test_source_document_hash_prefers_content_hash(self) -> None:
+        rule = build_base_rule(
+            rule_key="species.bar.min-size.namo",
+            rule_type="MIN_SIZE",
+            title="Taille minimale bar",
+            description="Bar commun : 42 cm",
+            source=self.dirm_source,
+            source_url="https://www.dirm.example/a.pdf",
+            legal_reference="Arrete test",
+            metric_type="SIZE_MIN_CM",
+            metric_value=42,
+            metric_unit="cm",
+            species_common_name="bar",
+            species_scientific_name=None,
+            needs_manual_review=True,
+            notes="",
+        )
+        rule["source"]["document_hash"] = "content-hash"
+
+        self.assertEqual(source_document_hash_for_rule(rule), "content-hash")
+
+    def test_should_recheck_document_uses_interval(self) -> None:
+        now = datetime(2026, 5, 1, 12, tzinfo=timezone.utc)
+        recent = {
+            "document_hash": "abc",
+            "checked_at": (now - timedelta(hours=1)).isoformat(),
+        }
+        old = {
+            "document_hash": "abc",
+            "checked_at": (now - timedelta(hours=30)).isoformat(),
+        }
+
+        self.assertFalse(should_recheck_document(recent, now=now))
+        self.assertTrue(should_recheck_document(old, now=now))
 
     def test_build_v2_artifacts_from_enriched_rules(self) -> None:
         rule = enrich_rule_for_publication(

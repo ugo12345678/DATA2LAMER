@@ -2,21 +2,80 @@ from __future__ import annotations
 
 import unittest
 
-from pscripts.sync_regulation_geospatial_links import (
+from pscripts.refresh_regulations_database import (
     BBox,
     bbox_overlap,
     extract_bbox_from_geometry_columns,
     extract_bbox_from_numeric_columns,
     normalize_bbox,
     primary_citation,
+    rule_version_fingerprint,
     resolve_rule_zone_bbox,
     safe_chunk_index,
     to_spot_items,
     to_zone_items,
+    upsert_source_candidates,
 )
 
 
-class SyncRegulationGeospatialLinksTests(unittest.TestCase):
+class _FakeResponse:
+    data = [{"id": "ok"}]
+
+
+class _FakeTable:
+    def __init__(self) -> None:
+        self.rows = []
+
+    def upsert(self, data, on_conflict=None):
+        self.rows.append((data, on_conflict))
+        return self
+
+    def execute(self):
+        return _FakeResponse()
+
+
+class _FakeClient:
+    def __init__(self) -> None:
+        self.tables = {}
+
+    def table(self, name):
+        table = self.tables.setdefault(name, _FakeTable())
+        return table
+
+
+class RefreshRegulationsDatabaseTests(unittest.TestCase):
+    def test_legacy_sync_module_still_exports_main(self) -> None:
+        from pscripts import sync_regulation_geospatial_links as legacy_module
+
+        self.assertTrue(callable(legacy_module.main))
+
+    def test_upsert_source_candidates_records_discovery_metadata(self) -> None:
+        client = _FakeClient()
+
+        count = upsert_source_candidates(
+            client,
+            [
+                {
+                    "id": "discovered_abc",
+                    "url": "https://example.gouv.fr/reglementation-peche-de-loisir-2027.html",
+                    "title": "Reglementation peche de loisir 2027",
+                    "kind": "html+pdf+links",
+                    "source_type": "DIRM",
+                    "authority_name": "DIRM",
+                    "status": "auto_accepted",
+                    "discovery_score": 22,
+                    "matched_keywords": ["reglementation"],
+                }
+            ],
+            "2026-05-01T00:00:00+00:00",
+        )
+
+        self.assertEqual(count, 1)
+        row, on_conflict = client.tables["reg_source_candidates"].rows[0]
+        self.assertEqual(on_conflict, "candidate_key")
+        self.assertEqual(row["candidate_key"], "discovered_abc")
+        self.assertEqual(row["status"], "auto_accepted")
+
     def test_extract_bbox_from_numeric_columns_spot(self) -> None:
         row = {
             "id": "s1",
@@ -203,6 +262,22 @@ class SyncRegulationGeospatialLinksTests(unittest.TestCase):
 
         self.assertEqual(citation["quote"], "fallback")
         self.assertEqual(citation["source_url"], "https://example.test/fallback")
+
+    def test_rule_version_fingerprint_changes_with_content(self) -> None:
+        base_rule = {
+            "rule_key": "species.bar.min-size.namo",
+            "rule_type": "MIN_SIZE",
+            "title": "Taille minimale bar",
+            "description": "Bar commun : 42 cm",
+            "metric_type": "SIZE_MIN_CM",
+            "metric_value": 42,
+            "metric_unit": "cm",
+            "species_common_name": "bar",
+            "zone": {"zone_code": "FACADE_NAMO"},
+        }
+        changed_rule = dict(base_rule, metric_value=45)
+
+        self.assertNotEqual(rule_version_fingerprint(base_rule), rule_version_fingerprint(changed_rule))
 
     def test_safe_chunk_index_stays_in_postgres_integer_range(self) -> None:
         value = safe_chunk_index("species.bar.declaration.mediterranee")

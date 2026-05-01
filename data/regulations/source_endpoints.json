@@ -27,6 +27,15 @@
     "url": "https://www.mer.gouv.fr/peche-de-loisir-en-mer"
   },
   {
+    "id": "dirm_namo_peche_loisir_hub",
+    "kind": "html+pdf+links",
+    "source_type": "DIRM",
+    "source_priority": 2,
+    "authority_name": "DIRM Nord Atlantique Manche Ouest",
+    "title": "DIRM NAMO - Peche de loisir",
+    "url": "https://www.dirm.nord-atlantique-manche-ouest.developpement-durable.gouv.fr/peche-de-loisir-r61.html"
+  },
+  {
     "id": "dirm_namo_capture_rules",
     "kind": "html+pdf",
     "source_type": "DIRM",
@@ -43,6 +52,24 @@
     "authority_name": "DIRM Nord Atlantique Manche Ouest",
     "title": "Pêche de loisir du bar, du lieu jaune et du maquereau en Bretagne et Pays de la Loire",
     "url": "https://www.dirm.nord-atlantique-manche-ouest.developpement-durable.gouv.fr/peche-de-loisir-du-bar-du-lieu-jaune-et-du-a585.html"
+  },
+  {
+    "id": "dirm_namo_especes_sensibles_2026",
+    "kind": "html+pdf",
+    "source_type": "DIRM",
+    "source_priority": 2,
+    "authority_name": "DIRM Nord Atlantique Manche Ouest",
+    "title": "Enregistrement des pecheurs de loisir et declaration obligatoire de certaines captures a partir de 2026",
+    "url": "https://www.dirm.nord-atlantique-manche-ouest.developpement-durable.gouv.fr/enregistrement-des-pecheurs-de-loisir-et-a1705.html"
+  },
+  {
+    "id": "dirm_namo_thon_rouge_2026",
+    "kind": "html+pdf",
+    "source_type": "DIRM",
+    "source_priority": 2,
+    "authority_name": "DIRM Nord Atlantique Manche Ouest",
+    "title": "Peche de loisir du thon rouge - demandes d'autorisations 2026",
+    "url": "https://www.dirm.nord-atlantique-manche-ouest.developpement-durable.gouv.fr/peche-de-loisir-du-thon-rouge-depot-des-demandes-d-a1141.html"
   },
   {
     "id": "dirm_namo_bretagne_synthese_pdf",
@@ -162,6 +189,15 @@
     "url": "https://www.dirm.sud-atlantique.developpement-durable.gouv.fr/les-autorisations-de-peche-thon-rouge-de-loisir-a1271.html"
   },
   {
+    "id": "dirm_sud_atlantique_autorisations_hub",
+    "kind": "html+pdf+links",
+    "source_type": "DIRM",
+    "source_priority": 2,
+    "authority_name": "DIRM Sud Atlantique",
+    "title": "DIRM Sud Atlantique - Gestion des autorisations de peche",
+    "url": "https://www.dirm.sud-atlantique.developpement-durable.gouv.fr/la-gestion-des-autorisations-de-peche-a1344.html"
+  },
+  {
     "id": "dirm_sud_atlantique_thon_rouge_2025",
     "kind": "html+pdf",
     "source_type": "DIRM",
@@ -178,6 +214,96 @@
     "authority_name": "Ministere de la Transition ecologique et de la Mer",
     "title": "Report de l'obligation d'enregistrement et declaration des pecheurs de loisir",
     "url": "https://www.ecologie.gouv.fr/presse/report-lobligation-denregistrement-declaration-pecheurs-loisir"
+  },
+  {
+    "id": "premar_atlantique_arretes_peche",
+    "kind": "html+pdf+links",
+    "source_type": "PREFECTURE_MARITIME",
+    "source_priority": 2,
+    "authority_name": "Prefecture maritime de l'Atlantique",
+    "title": "Arretes Prefecture maritime Atlantique - peche",
+    "url": "https://www.premar-atlantique.gouv.fr/arretes?motcle=p%C3%AAche&sort=a.dateSignature&direction=desc"
+  },
+  {
+    "id": "premar_manche_arretes_peche",
+    "kind": "html+pdf+links",
+    "source_type": "PREFECTURE_MARITIME",
+    "source_priority": 2,
+    "authority_name": "Prefecture maritime de la Manche et de la mer du Nord",
+    "title": "Arretes Prefecture maritime Manche Mer du Nord - peche",
+    "url": "https://www.premar-manche.gouv.fr/arretes.html?motcle=p%C3%AAche&sort=a.dateSignature&direction=desc"
+  },
+  {
+    "id": "premar_mediterranee_arretes_peche",
+    "kind": "html+pdf+links",
+    "source_type": "PREFECTURE_MARITIME",
+    "source_priority": 2,
+    "authority_name": "Prefecture maritime de la Mediterranee",
+    "title": "Arretes Prefecture maritime Mediterranee - peche",
+    "url": "https://www.premar-mediterranee.gouv.fr/arretes?motcle=p%C3%AAche&sort=a.dateSignature&direction=desc"
+  },
+  {
+    "id": "pref_finistere_peche_loisir_hub",
+    "kind": "html+pdf+links",
+    "source_type": "PREFECTURE_DEPARTEMENTALE",
+    "source_priority": 2,
+    "authority_name": "Prefecture du Finistere",
+    "title": "Finistere - Peche de loisir",
+    "url": "https://www.finistere.gouv.fr/Actions-de-l-Etat/Mer-littoral-et-securite-maritime/Peche-de-loisir"
+  },
+  {
+    "id": "pref_finistere_reglementation_departementale",
+    "kind": "html+pdf+links",
+    "source_type": "PREFECTURE_DEPARTEMENTALE",
+    "source_priority": 2,
+    "authority_name": "Prefecture du Finistere",
+    "title": "Finistere - Reglementation departementale peche de loisir",
+    "url": "https://www.finistere.gouv.fr/Actions-de-l-Etat/Mer-littoral-et-securite-maritime/Peche-de-loisir/Reglementation-departementale"
+  },
+  {
+    "id": "pref_cotes_darmor_peche_loisir_hub",
+    "kind": "html+pdf+links",
+    "source_type": "PREFECTURE_DEPARTEMENTALE",
+    "source_priority": 2,
+    "authority_name": "Prefecture des Cotes-d'Armor",
+    "title": "Cotes-d'Armor - Peche embarquee, a pied et sous-marine",
+    "url": "https://www.cotes-darmor.gouv.fr/Actions-de-l-Etat/Mer-littoral-et-securite-maritime/Activites-de-loisir-Plaisance/Peche/Peche-embarquee-a-pieds-ou-sous-marine"
+  },
+  {
+    "id": "pref_cotes_darmor_maquereau_2026",
+    "kind": "html+pdf",
+    "source_type": "PREFECTURE_DEPARTEMENTALE",
+    "source_priority": 2,
+    "authority_name": "Prefecture des Cotes-d'Armor",
+    "title": "Cotes-d'Armor - Peche du maquereau",
+    "url": "https://www.cotes-darmor.gouv.fr/Actions-de-l-Etat/Mer-littoral-et-securite-maritime/Activites-de-loisir-Plaisance/Peche/Peche-du-maquereau"
+  },
+  {
+    "id": "pref_ille_et_vilaine_peche_loisir",
+    "kind": "html+pdf+links",
+    "source_type": "PREFECTURE_DEPARTEMENTALE",
+    "source_priority": 2,
+    "authority_name": "Prefecture d'Ille-et-Vilaine",
+    "title": "Ille-et-Vilaine - Reglementation peche maritime de loisir",
+    "url": "https://www.ille-et-vilaine.gouv.fr/Actions-de-l-Etat/Mer-littoral-et-securite-maritime/Plaisance-peche-de-loisir-et-loisirs-nautiques/Reglementation-Peche-maritime-de-loisir"
+  },
+  {
+    "id": "pref_morbihan_peche_embarquee",
+    "kind": "html+pdf+links",
+    "source_type": "PREFECTURE_DEPARTEMENTALE",
+    "source_priority": 2,
+    "authority_name": "Prefecture du Morbihan",
+    "title": "Morbihan - Peche embarquee",
+    "url": "https://www.morbihan.gouv.fr/Actions-de-l-Etat/Mer-littoral-et-securite-maritime/Activites-de-loisir/Peche-de-loisir/Peche-embarquee/Peche-embarquee"
+  },
+  {
+    "id": "pref_morbihan_peche_a_pied",
+    "kind": "html+pdf+links",
+    "source_type": "PREFECTURE_DEPARTEMENTALE",
+    "source_priority": 2,
+    "authority_name": "Prefecture du Morbihan",
+    "title": "Morbihan - Reglementation peche a pied de loisir",
+    "url": "https://www.morbihan.gouv.fr/Actions-de-l-Etat/Mer-littoral-et-securite-maritime/Activites-de-loisir/Peche-de-loisir/Peche-a-pied-de-loisir/La-reglementation-de-la-peche-a-pied-de-loisir"
   },
   {
     "id": "data_gouv_zones_peche_sous_marine_reglementee",

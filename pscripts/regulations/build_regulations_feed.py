@@ -26,10 +26,19 @@ OUTPUT_CANDIDATES_PATH = Path(
 OUTPUT_DOCUMENTS_PATH = Path(
     os.environ.get("REG_SOURCE_DOCUMENTS_FILE", "data/regulations/source_documents_manifest.json")
 )
+DISCOVERED_SOURCES_PATH = Path(
+    os.environ.get("REG_DISCOVERED_SOURCES_FILE", "data/regulations/generated_source_candidates.json")
+)
+SOURCE_FETCH_STATE_PATH = Path(
+    os.environ.get("REG_SOURCE_FETCH_STATE_FILE", "data/regulations/source_fetch_state.json")
+)
 STATIC_LEGIFRANCE_RULES_PATH = Path(
     os.environ.get("REG_STATIC_LEGIFRANCE_RULES_FILE", "data/regulations/static_legifrance_rules.json")
 )
 FETCH_LIVE_LEGIFRANCE = os.environ.get("REG_LEGIFRANCE_FETCH_LIVE", "false").lower() == "true"
+ENABLE_INCREMENTAL_FETCH = os.environ.get("REG_INCREMENTAL_FETCH", "true").lower() == "true"
+FORCE_REFETCH = os.environ.get("REG_FORCE_REFETCH", "false").lower() == "true"
+SOURCE_RECHECK_INTERVAL_HOURS = float(os.environ.get("REG_SOURCE_RECHECK_INTERVAL_HOURS", "20"))
 REQUEST_TIMEOUT_SECONDS = int(os.environ.get("REG_REQUEST_TIMEOUT_SECONDS", "25"))
 MAX_LINKED_HTML_PER_SOURCE = int(os.environ.get("REG_MAX_LINKED_HTML_PER_SOURCE", "18"))
 MAX_PDF_LINKS_PER_PAGE = int(os.environ.get("REG_MAX_PDF_LINKS_PER_PAGE", "18"))
@@ -55,6 +64,14 @@ HTTP_HEADERS = {
     "Connection": "keep-alive",
 }
 LOCAL_AI_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0"}
+REUSABLE_FETCH_STATUSES = {"not_modified", "recent_skip", "unchanged_hash", "fetch_error_reused"}
+OPERATIONAL_SOURCE_TYPES = {
+    "DIRM",
+    "MINISTERE_MER",
+    "PREFECTURE_MARITIME",
+    "PREFECTURE_DEPARTEMENTALE",
+    "DATA_GOUV",
+}
 
 CRUSTACEAN_KEYWORDS = (
     "homard",
@@ -373,6 +390,14 @@ class SourceDocument:
     source: SourceRecord
     url: str
     text: str
+    document_hash: str | None = None
+    content_hash: str | None = None
+    content_length: int | None = None
+    fetched_at: str | None = None
+    checked_at: str | None = None
+    etag: str | None = None
+    last_modified: str | None = None
+    fetch_status: str = "fetched"
 
 
 def now_utc() -> datetime:
@@ -644,8 +669,129 @@ def sha256_text(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
+def sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
 def canonicalize_url(url: str) -> str:
     return urldefrag(url.strip())[0]
+
+
+def parse_iso_datetime(value: Any) -> datetime | None:
+    if not value:
+        return None
+    try:
+        text = str(value)
+        if text.endswith("Z"):
+            text = text[:-1] + "+00:00"
+        parsed = datetime.fromisoformat(text)
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+    except (TypeError, ValueError):
+        return None
+
+
+def load_json_object(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def load_fetch_state(path: Path = SOURCE_FETCH_STATE_PATH) -> dict[str, Any]:
+    payload = load_json_object(path)
+    documents = payload.get("documents")
+    if not isinstance(documents, dict):
+        documents = {}
+    return {
+        "version": 1,
+        "updated_at": payload.get("updated_at"),
+        "documents": documents,
+    }
+
+
+def load_previous_generated_rules(path: Path = OUTPUT_RULES_PATH) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(payload, list):
+        return []
+    return [item for item in payload if isinstance(item, dict)]
+
+
+def primary_rule_source_url(rule: dict[str, Any]) -> str:
+    citations = rule.get("citations") or []
+    if citations and isinstance(citations[0], dict) and citations[0].get("source_url"):
+        return canonicalize_url(str(citations[0]["source_url"]))
+    source = rule.get("source") or {}
+    return canonicalize_url(str(source.get("source_url") or ""))
+
+
+def previous_rules_by_source_url(rules: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for rule in rules:
+        source_url = primary_rule_source_url(rule)
+        if source_url:
+            grouped.setdefault(source_url, []).append(rule)
+    return grouped
+
+
+def should_recheck_document(previous: dict[str, Any], now: datetime | None = None) -> bool:
+    if FORCE_REFETCH or SOURCE_RECHECK_INTERVAL_HOURS <= 0:
+        return True
+    if not previous.get("document_hash"):
+        return True
+    checked_at = parse_iso_datetime(previous.get("checked_at"))
+    if checked_at is None:
+        return True
+    now = now or now_utc()
+    return (now - checked_at).total_seconds() >= SOURCE_RECHECK_INTERVAL_HOURS * 3600
+
+
+def fetch_state_entry(fetch_state: dict[str, Any] | None, url: str) -> dict[str, Any]:
+    if fetch_state is None:
+        return {}
+    documents = fetch_state.setdefault("documents", {})
+    if not isinstance(documents, dict):
+        fetch_state["documents"] = {}
+        documents = fetch_state["documents"]
+    entry = documents.get(canonicalize_url(url))
+    return entry if isinstance(entry, dict) else {}
+
+
+def update_fetch_state_entry(fetch_state: dict[str, Any] | None, url: str, metadata: dict[str, Any]) -> None:
+    if fetch_state is None:
+        return
+    canonical_url = canonicalize_url(url)
+    documents = fetch_state.setdefault("documents", {})
+    if not isinstance(documents, dict):
+        documents = {}
+        fetch_state["documents"] = documents
+    previous = documents.get(canonical_url)
+    merged = dict(previous) if isinstance(previous, dict) else {}
+    merged.update({key: value for key, value in metadata.items() if value is not None})
+    merged["url"] = canonical_url
+    documents[canonical_url] = merged
+    fetch_state["updated_at"] = now_utc().isoformat()
+
+
+def conditional_headers_for_url(url: str, previous: dict[str, Any], *, binary: bool = False) -> dict[str, str]:
+    headers = http_headers_for_url(url, binary=binary)
+    if not FORCE_REFETCH:
+        etag = previous.get("etag")
+        last_modified = previous.get("last_modified")
+        if etag:
+            headers["If-None-Match"] = str(etag)
+        if last_modified:
+            headers["If-Modified-Since"] = str(last_modified)
+    return headers
 
 
 def is_official_url(url: str) -> bool:
@@ -693,6 +839,14 @@ def source_scope_code(source: SourceRecord) -> str:
     source_marker = fold_text(f"{source.source_id} {source.title} {source.url}")
     if source.source_type in {"LEGIFRANCE", "MINISTERE_MER"}:
         return "france"
+    if any(token in source_marker for token in ("finistere", "cotes-darmor", "morbihan", "ille-et-vilaine")):
+        return "bretagne"
+    if "premar_atlantique" in source_marker or "prefecture maritime de l'atlantique" in source_marker:
+        return "france"
+    if "premar_manche" in source_marker or "manche et de la mer du nord" in source_marker:
+        return "memn"
+    if "premar_mediterranee" in source_marker:
+        return "mediterranee"
     if "namo" in source_marker or "nord-atlantique-manche-ouest" in source_marker:
         return "namo"
     if (
@@ -746,6 +900,50 @@ def load_source_catalog(path: Path) -> list[SourceRecord]:
     return out
 
 
+def source_record_from_mapping(item: dict[str, Any]) -> SourceRecord:
+    return SourceRecord(
+        source_id=str(item["id"]),
+        source_type=str(item["source_type"]),
+        source_priority=int(item["source_priority"]),
+        authority_name=str(item["authority_name"]),
+        title=str(item["title"]),
+        url=str(item["url"]),
+        kind=str(item["kind"]),
+    )
+
+
+def load_discovered_source_candidates(path: Path = DISCOVERED_SOURCES_PATH) -> list[SourceRecord]:
+    if not path.exists():
+        return []
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(payload, list):
+        return []
+
+    records: list[SourceRecord] = []
+    accepted_statuses = {"accepted", "auto_accepted"}
+    for item in payload:
+        if not isinstance(item, dict) or str(item.get("status") or "") not in accepted_statuses:
+            continue
+        try:
+            records.append(source_record_from_mapping(item))
+        except (KeyError, TypeError, ValueError):
+            continue
+    return records
+
+
+def merge_source_catalog(catalog: list[SourceRecord], discovered: list[SourceRecord]) -> list[SourceRecord]:
+    by_url: dict[str, SourceRecord] = {}
+    for source in catalog + discovered:
+        canonical_url = canonicalize_url(source.url)
+        current = by_url.get(canonical_url)
+        if current is None or source.source_priority < current.source_priority:
+            by_url[canonical_url] = source
+    return sorted(by_url.values(), key=lambda source: (source.source_priority, source.source_id))
+
+
 def load_static_legifrance_rules(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         return []
@@ -794,6 +992,115 @@ def fetch_url_bytes(url: str, retries: int = 3) -> bytes:
             if attempt < retries - 1:
                 time.sleep(1.2 * (attempt + 1))
     raise RuntimeError(f"Echec HTTP binaire sur {url}: {last_error}")
+
+
+def fetch_url_with_state(
+    url: str,
+    fetch_state: dict[str, Any] | None,
+    *,
+    binary: bool = False,
+    retries: int = 3,
+) -> tuple[bytes | None, dict[str, Any]]:
+    canonical_url = canonicalize_url(url)
+    now_iso = now_utc().isoformat()
+    previous = fetch_state_entry(fetch_state, canonical_url)
+    previous_hash = str(previous.get("content_hash") or previous.get("document_hash") or "")
+    disable_skip = bool(fetch_state.get("_disable_skip")) if isinstance(fetch_state, dict) else False
+
+    if fetch_state is not None and previous and not disable_skip and not should_recheck_document(previous):
+        metadata = {
+            **previous,
+            "checked_at": now_iso,
+            "fetch_status": "recent_skip",
+        }
+        update_fetch_state_entry(fetch_state, canonical_url, metadata)
+        return None, metadata
+
+    headers = (
+        http_headers_for_url(canonical_url, binary=binary)
+        if disable_skip
+        else conditional_headers_for_url(canonical_url, previous, binary=binary)
+    )
+    last_error: Exception | None = None
+    for attempt in range(retries):
+        try:
+            response = requests.get(canonical_url, headers=headers, timeout=REQUEST_TIMEOUT_SECONDS)
+            if response.status_code == 304 and previous and not disable_skip:
+                metadata = {
+                    **previous,
+                    "checked_at": now_iso,
+                    "fetch_status": "not_modified",
+                }
+                update_fetch_state_entry(fetch_state, canonical_url, metadata)
+                return None, metadata
+            response.raise_for_status()
+            content = response.content
+            content_hash = sha256_bytes(content)
+            unchanged = bool(previous_hash and previous_hash == content_hash and not disable_skip)
+            metadata = {
+                **previous,
+                "url": canonical_url,
+                "document_hash": content_hash,
+                "content_hash": content_hash,
+                "content_length": len(content),
+                "document_type": "pdf" if binary else "html",
+                "etag": response.headers.get("ETag") or response.headers.get("Etag"),
+                "last_modified": response.headers.get("Last-Modified"),
+                "content_type": response.headers.get("Content-Type"),
+                "fetched_at": previous.get("fetched_at") if unchanged else now_iso,
+                "checked_at": now_iso,
+                "fetch_status": "unchanged_hash" if unchanged else "fetched",
+            }
+            update_fetch_state_entry(fetch_state, canonical_url, metadata)
+            return content, metadata
+        except Exception as exc:  # pragma: no cover - network variability
+            last_error = exc
+            if attempt < retries - 1:
+                time.sleep(1.2 * (attempt + 1))
+    if fetch_state is not None and previous:
+        metadata = {
+            **previous,
+            "checked_at": now_iso,
+            "fetch_status": "fetch_error_reused",
+            "error_message": str(last_error),
+        }
+        update_fetch_state_entry(fetch_state, canonical_url, metadata)
+        return None, metadata
+    raise RuntimeError(f"Echec HTTP incremental sur {canonical_url}: {last_error}")
+
+
+def fetch_url_text_with_state(
+    url: str,
+    fetch_state: dict[str, Any] | None,
+    retries: int = 3,
+) -> tuple[str | None, dict[str, Any]]:
+    raw, metadata = fetch_url_with_state(url, fetch_state, binary=False, retries=retries)
+    if raw is None:
+        return None, metadata
+    if metadata.get("fetch_status") == "unchanged_hash" and not FORCE_REFETCH:
+        return None, metadata
+    response_encoding = "utf-8"
+    try:
+        response_encoding = (
+            requests.utils.get_encoding_from_headers({"content-type": metadata.get("content_type", "")})
+            or "utf-8"
+        )
+    except Exception:
+        response_encoding = "utf-8"
+    return raw.decode(response_encoding, errors="replace"), metadata
+
+
+def fetch_pdf_text_with_state(
+    url: str,
+    fetch_state: dict[str, Any] | None,
+    retries: int = 3,
+) -> tuple[str | None, dict[str, Any]]:
+    raw, metadata = fetch_url_with_state(url, fetch_state, binary=True, retries=retries)
+    if raw is None:
+        return None, metadata
+    if metadata.get("fetch_status") == "unchanged_hash" and not FORCE_REFETCH:
+        return None, metadata
+    return extract_pdf_text_with_optional_ocr(raw, url), metadata
 
 
 def extract_pdf_urls_from_html(html: str, base_url: str, limit: int | None = None) -> list[str]:
@@ -1256,6 +1563,9 @@ def citation_quote_for_rule(rule: dict[str, Any], max_chars: int = 700) -> str:
 
 def source_document_hash_for_rule(rule: dict[str, Any]) -> str:
     source = rule.get("source") or {}
+    explicit_hash = rule.get("document_hash") or source.get("document_hash") or source.get("content_hash")
+    if explicit_hash:
+        return str(explicit_hash)
     source_url = canonicalize_url(str(source.get("source_url") or ""))
     seed = "\n".join(
         [
@@ -1284,6 +1594,12 @@ def citation_for_rule(rule: dict[str, Any]) -> dict[str, Any]:
         "page_number": None,
         "locator": rule.get("legal_reference") or rule.get("rule_key"),
         "document_hash": document_hash,
+        "content_hash": source.get("content_hash") or document_hash,
+        "content_length": source.get("content_length"),
+        "etag": source.get("etag"),
+        "last_modified": source.get("last_modified"),
+        "checked_at": source.get("checked_at"),
+        "fetched_at": source.get("fetched_at"),
         "confidence_score": infer_confidence_score(rule),
     }
 
@@ -2112,16 +2428,34 @@ def extract_sensitive_species_declaration_rules(
 
 def collect_source_documents(
     source: SourceRecord,
-    html_cache: dict[str, str],
-    pdf_text_cache: dict[str, str],
+    html_cache: dict[str, str | None],
+    pdf_text_cache: dict[str, str | None],
+    fetch_state: dict[str, Any] | None = None,
 ) -> list[SourceDocument]:
     documents: list[SourceDocument] = []
     seen_doc_urls: set[str] = set()
     source_kind = fold_text(source.kind)
     source_url = canonicalize_url(source.url)
 
-    def add_document(url: str, text: str) -> None:
-        if not text.strip():
+    def build_uncached_text_metadata(url: str, text: str, *, document_type: str) -> dict[str, Any]:
+        now_iso = now_utc().isoformat()
+        raw = text.encode("utf-8")
+        content_hash = sha256_bytes(raw)
+        return {
+            "url": canonicalize_url(url),
+            "document_hash": content_hash,
+            "content_hash": content_hash,
+            "content_length": len(raw),
+            "document_type": document_type,
+            "fetched_at": now_iso,
+            "checked_at": now_iso,
+            "fetch_status": "fetched",
+        }
+
+    def add_document(url: str, text: str | None, metadata: dict[str, Any] | None = None) -> None:
+        metadata = metadata or {}
+        fetch_status = str(metadata.get("fetch_status") or "fetched")
+        if not str(text or "").strip() and fetch_status not in REUSABLE_FETCH_STATUSES:
             return
         if len(documents) >= max(1, MAX_DOCUMENTS_PER_SOURCE):
             return
@@ -2129,74 +2463,139 @@ def collect_source_documents(
         if canonical_url in seen_doc_urls:
             return
         seen_doc_urls.add(canonical_url)
-        documents.append(SourceDocument(source=source, url=canonical_url, text=text))
+        documents.append(
+            SourceDocument(
+                source=source,
+                url=canonical_url,
+                text=text or "",
+                document_hash=metadata.get("document_hash") or metadata.get("content_hash"),
+                content_hash=metadata.get("content_hash") or metadata.get("document_hash"),
+                content_length=metadata.get("content_length"),
+                fetched_at=metadata.get("fetched_at"),
+                checked_at=metadata.get("checked_at"),
+                etag=metadata.get("etag"),
+                last_modified=metadata.get("last_modified"),
+                fetch_status=fetch_status,
+            )
+        )
 
-    def fetch_html_cached(url: str) -> str:
-        if url not in html_cache:
-            html_cache[url] = fetch_url_text(url)
-        return html_cache[url]
+    def fetch_html_cached(url: str) -> tuple[str | None, dict[str, Any]]:
+        canonical_url = canonicalize_url(url)
+        if canonical_url not in html_cache:
+            if fetch_state is None:
+                html = fetch_url_text(canonical_url)
+                metadata = build_uncached_text_metadata(canonical_url, html, document_type="html")
+            else:
+                html, metadata = fetch_url_text_with_state(canonical_url, fetch_state)
+            html_cache[canonical_url] = html
+        else:
+            metadata = fetch_state_entry(fetch_state, canonical_url)
+        return html_cache[canonical_url], metadata
 
-    def fetch_pdf_text_cached(url: str) -> str:
-        if url not in pdf_text_cache:
-            pdf_bytes = fetch_url_bytes(url)
-            pdf_text_cache[url] = extract_pdf_text_with_optional_ocr(pdf_bytes, url)
-        return pdf_text_cache[url]
+    def fetch_pdf_text_cached(url: str) -> tuple[str | None, dict[str, Any]]:
+        canonical_url = canonicalize_url(url)
+        if canonical_url not in pdf_text_cache:
+            if fetch_state is None:
+                pdf_bytes = fetch_url_bytes(canonical_url)
+                text = extract_pdf_text_with_optional_ocr(pdf_bytes, canonical_url)
+                now_iso = now_utc().isoformat()
+                content_hash = sha256_bytes(pdf_bytes)
+                metadata = {
+                    "url": canonical_url,
+                    "document_hash": content_hash,
+                    "content_hash": content_hash,
+                    "content_length": len(pdf_bytes),
+                    "document_type": "pdf",
+                    "fetched_at": now_iso,
+                    "checked_at": now_iso,
+                    "fetch_status": "fetched",
+                }
+            else:
+                text, metadata = fetch_pdf_text_with_state(canonical_url, fetch_state)
+            pdf_text_cache[canonical_url] = text
+        else:
+            metadata = fetch_state_entry(fetch_state, canonical_url)
+        return pdf_text_cache[canonical_url], metadata
+
+    def pdf_urls_for_html(html: str | None, html_url: str, metadata: dict[str, Any], limit: int | None) -> list[str]:
+        if html is None:
+            urls = metadata.get("pdf_urls") or []
+            return [canonicalize_url(str(url)) for url in urls if url]
+        urls = extract_pdf_urls_from_html(html, html_url, limit=limit)
+        update_fetch_state_entry(fetch_state, html_url, {"pdf_urls": urls})
+        return urls
+
+    def html_links_for_html(html: str | None, html_url: str, metadata: dict[str, Any], limit: int) -> list[str]:
+        if html is None:
+            urls = metadata.get("linked_html_urls") or []
+            return [canonicalize_url(str(url)) for url in urls if url]
+        urls = extract_relevant_html_links_from_html(html, html_url, limit=limit)
+        update_fetch_state_entry(fetch_state, html_url, {"linked_html_urls": urls})
+        return urls
 
     if "pdf" == source_kind or source_url.lower().endswith(".pdf"):
         try:
-            add_document(source_url, fetch_pdf_text_cached(source_url))
+            pdf_text, metadata = fetch_pdf_text_cached(source_url)
+            add_document(source_url, pdf_text, metadata)
         except Exception as exc:
             print(f"[WARN] Echec fetch PDF source={source.source_id} url={source_url}: {exc}")
         return documents
 
     if "html" not in source_kind and not source_url.lower().endswith(".html"):
         try:
-            add_document(source_url, html_to_text(fetch_html_cached(source_url)))
+            html, metadata = fetch_html_cached(source_url)
+            add_document(source_url, html_to_text(html) if html is not None else None, metadata)
         except Exception as exc:
             print(f"[WARN] Echec fetch source={source.source_id} url={source_url}: {exc}")
         return documents
 
     try:
-        base_html = fetch_html_cached(source_url)
-        add_document(source_url, html_to_text(base_html))
+        base_html, base_metadata = fetch_html_cached(source_url)
+        add_document(source_url, html_to_text(base_html) if base_html is not None else None, base_metadata)
     except Exception as exc:
         print(f"[WARN] Echec fetch source={source.source_id} url={source_url}: {exc}")
         return documents
 
-    should_collect_pdfs = "pdf" in source_kind or source.source_type in {
-        "DIRM",
-        "MINISTERE_MER",
-        "PREFECTURE_MARITIME",
-        "DATA_GOUV",
-    }
+    should_collect_pdfs = "pdf" in source_kind or source.source_type in OPERATIONAL_SOURCE_TYPES
     if should_collect_pdfs:
-        for pdf_url in extract_pdf_urls_from_html(base_html, source_url, limit=MAX_PDF_LINKS_PER_PAGE):
+        for pdf_url in pdf_urls_for_html(base_html, source_url, base_metadata, limit=MAX_PDF_LINKS_PER_PAGE):
             try:
-                add_document(pdf_url, fetch_pdf_text_cached(pdf_url))
+                pdf_text, metadata = fetch_pdf_text_cached(pdf_url)
+                add_document(pdf_url, pdf_text, metadata)
             except Exception as exc:
                 print(f"[WARN] Echec fetch PDF lie source={source.source_id} url={pdf_url}: {exc}")
 
-    should_collect_links = "links" in source_kind or source.source_type in {"DIRM", "PREFECTURE_MARITIME", "DATA_GOUV"}
+    should_collect_links = "links" in source_kind or source.source_type in {
+        "DIRM",
+        "PREFECTURE_MARITIME",
+        "PREFECTURE_DEPARTEMENTALE",
+        "DATA_GOUV",
+    }
     if not should_collect_links:
         return documents
 
-    linked_html_urls = extract_relevant_html_links_from_html(base_html, source_url, limit=MAX_LINKED_HTML_PER_SOURCE)
+    linked_html_urls = html_links_for_html(base_html, source_url, base_metadata, limit=MAX_LINKED_HTML_PER_SOURCE)
     per_link_pdf_limit = max(2, MAX_PDF_LINKS_PER_PAGE // 2)
     for linked_html_url in linked_html_urls:
         if len(documents) >= max(1, MAX_DOCUMENTS_PER_SOURCE):
             break
         try:
-            linked_html = fetch_html_cached(linked_html_url)
-            add_document(linked_html_url, html_to_text(linked_html))
+            linked_html, linked_metadata = fetch_html_cached(linked_html_url)
+            add_document(
+                linked_html_url,
+                html_to_text(linked_html) if linked_html is not None else None,
+                linked_metadata,
+            )
         except Exception as exc:
             print(f"[WARN] Echec fetch page liee source={source.source_id} url={linked_html_url}: {exc}")
             continue
 
-        for pdf_url in extract_pdf_urls_from_html(linked_html, linked_html_url, limit=per_link_pdf_limit):
+        for pdf_url in pdf_urls_for_html(linked_html, linked_html_url, linked_metadata, limit=per_link_pdf_limit):
             if len(documents) >= max(1, MAX_DOCUMENTS_PER_SOURCE):
                 break
             try:
-                add_document(pdf_url, fetch_pdf_text_cached(pdf_url))
+                pdf_text, metadata = fetch_pdf_text_cached(pdf_url)
+                add_document(pdf_url, pdf_text, metadata)
             except Exception as exc:
                 print(f"[WARN] Echec fetch PDF page liee source={source.source_id} url={pdf_url}: {exc}")
 
@@ -2649,17 +3048,23 @@ def build_source_documents_manifest(rules: list[dict[str, Any]]) -> list[dict[st
         citation = citations[0] if citations else citation_for_rule(rule)
         current = by_hash.get(document_hash)
         if current is None:
+            source_url = citation.get("source_url") or source.get("source_url")
+            content_length = source.get("content_length")
             by_hash[document_hash] = {
                 "document_hash": document_hash,
-                "source_url": citation.get("source_url") or source.get("source_url"),
-                "canonical_url": citation.get("source_url") or source.get("source_url"),
+                "source_url": source_url,
+                "canonical_url": source.get("canonical_url") or source_url,
                 "source_type": source.get("source_type"),
                 "authority_name": source.get("authority_name"),
                 "title": source.get("title"),
-                "document_type": "pdf" if str(source.get("source_url") or "").lower().endswith(".pdf") else "html",
-                "content_length": 0,
-                "fetched_at": None,
-                "checked_at": now_utc().isoformat(),
+                "document_type": "pdf" if str(source_url or "").lower().endswith(".pdf") else "html",
+                "content_length": content_length or 0,
+                "fetched_at": source.get("fetched_at"),
+                "checked_at": source.get("checked_at") or now_utc().isoformat(),
+                "etag": source.get("etag"),
+                "last_modified": source.get("last_modified"),
+                "content_hash": source.get("content_hash"),
+                "fetch_status": source.get("fetch_status"),
                 "rule_keys": [rule.get("rule_key")],
                 "chunks": [
                     {
@@ -2719,7 +3124,7 @@ def build_source_documents_manifest(rules: list[dict[str, Any]]) -> list[dict[st
                 )
 
     for item in by_hash.values():
-        item["content_length"] = sum(len(chunk["text_excerpt"]) for chunk in item["chunks"])
+        item["content_length"] = item.get("content_length") or sum(len(chunk["text_excerpt"]) for chunk in item["chunks"])
         item["rule_keys"] = sorted(set(str(key) for key in item["rule_keys"] if key))
     return sorted(by_hash.values(), key=lambda item: str(item.get("source_url") or ""))
 
@@ -3233,56 +3638,118 @@ def add_legifrance_rules(
             rules.extend([rule for rule in static_legifrance_rules if rule.get("source_id") == "legifrance_diving"])
 
 
+def attach_document_metadata(rule: dict[str, Any], document: SourceDocument) -> dict[str, Any]:
+    source = dict(rule.get("source") or {})
+    if document.document_hash:
+        source["document_hash"] = document.document_hash
+        rule["document_hash"] = document.document_hash
+    if document.content_hash:
+        source["content_hash"] = document.content_hash
+    source["canonical_url"] = document.url
+    if document.content_length is not None:
+        source["content_length"] = document.content_length
+    if document.fetched_at:
+        source["fetched_at"] = document.fetched_at
+    if document.checked_at:
+        source["checked_at"] = document.checked_at
+    if document.etag:
+        source["etag"] = document.etag
+    if document.last_modified:
+        source["last_modified"] = document.last_modified
+    source["fetch_status"] = document.fetch_status
+    rule["source"] = source
+    return rule
+
+
+def clone_previous_rule(rule: dict[str, Any], document: SourceDocument) -> dict[str, Any]:
+    cloned = json.loads(json.dumps(rule))
+    attach_document_metadata(cloned, document)
+    cloned["reused_from_previous_run"] = True
+    return cloned
+
+
+def parse_operational_document(source: SourceRecord, document: SourceDocument) -> list[dict[str, Any]]:
+    parsed_rules: list[dict[str, Any]] = []
+    if source.source_type == "MINISTERE_MER":
+        parsed_rules.extend(
+            parse_ministere_spearfishing_rules(
+                source,
+                document.text,
+                source_url=document.url,
+            )
+        )
+
+    if source.source_type not in OPERATIONAL_SOURCE_TYPES:
+        return parsed_rules
+
+    parsed_rules.extend(extract_dirm_size_rules(source, document.url, document.text))
+    parsed_rules.extend(extract_dirm_quota_rules(source, document.url, document.text))
+    parsed_rules.extend(extract_dirm_closure_rules(source, document.url, document.text))
+    parsed_rules.extend(extract_dirm_protected_species_rules(source, document.url, document.text))
+    parsed_rules.extend(extract_practice_restriction_rules(source, document.url, document.text))
+    parsed_rules.extend(extract_sensitive_species_declaration_rules(source, document.url, document.text))
+    return [attach_document_metadata(rule, document) for rule in parsed_rules]
+
+
 def add_operational_source_rules(
     source: SourceRecord,
     source_documents: list[SourceDocument],
     rules: list[dict[str, Any]],
+    previous_rules_by_url: dict[str, list[dict[str, Any]]] | None = None,
 ) -> None:
     for document in source_documents:
-        if source.source_type == "MINISTERE_MER":
-            rules.extend(
-                parse_ministere_spearfishing_rules(
-                    source,
-                    document.text,
-                    source_url=document.url,
+        if document.fetch_status in REUSABLE_FETCH_STATUSES:
+            previous = (previous_rules_by_url or {}).get(document.url) or []
+            if previous:
+                rules.extend(clone_previous_rule(rule, document) for rule in previous)
+                print(
+                    f"[INFO] document inchange reutilise url={document.url} "
+                    f"rules={len(previous)} status={document.fetch_status}"
                 )
-            )
-
-        if source.source_type not in {"DIRM", "MINISTERE_MER", "PREFECTURE_MARITIME", "DATA_GOUV"}:
+            else:
+                print(
+                    f"[WARN] document inchange sans regles precedentes url={document.url} "
+                    f"status={document.fetch_status}"
+                )
             continue
 
-        rules.extend(extract_dirm_size_rules(source, document.url, document.text))
-        rules.extend(extract_dirm_quota_rules(source, document.url, document.text))
-        rules.extend(extract_dirm_closure_rules(source, document.url, document.text))
-        rules.extend(extract_dirm_protected_species_rules(source, document.url, document.text))
-        rules.extend(extract_practice_restriction_rules(source, document.url, document.text))
-        rules.extend(extract_sensitive_species_declaration_rules(source, document.url, document.text))
+        rules.extend(parse_operational_document(source, document))
 
 
-def build_rules_from_sources(catalog: list[SourceRecord]) -> list[dict[str, Any]]:
+def build_rules_from_sources(
+    catalog: list[SourceRecord],
+    fetch_state: dict[str, Any] | None = None,
+    previous_rules: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
     rules: list[dict[str, Any]] = []
     static_legifrance_rules = load_static_legifrance_rules(STATIC_LEGIFRANCE_RULES_PATH)
     source_by_id = {source.source_id: source for source in catalog}
+    previous_by_url = previous_rules_by_source_url(previous_rules or [])
 
     add_legifrance_rules(source_by_id, static_legifrance_rules, rules)
 
-    html_cache: dict[str, str] = {}
-    pdf_text_cache: dict[str, str] = {}
+    html_cache: dict[str, str | None] = {}
+    pdf_text_cache: dict[str, str | None] = {}
     for source in catalog:
         if source.source_type == "LEGIFRANCE":
             continue
 
-        source_documents = collect_source_documents(source, html_cache, pdf_text_cache)
+        source_documents = collect_source_documents(source, html_cache, pdf_text_cache, fetch_state=fetch_state)
         if not source_documents:
             print(f"[WARN] Aucun document exploitable pour source={source.source_id}")
             continue
 
         before = len(rules)
-        add_operational_source_rules(source, source_documents, rules)
+        add_operational_source_rules(source, source_documents, rules, previous_rules_by_url=previous_by_url)
         after = len(rules)
+        skipped = sum(
+            1
+            for document in source_documents
+            if document.fetch_status in REUSABLE_FETCH_STATUSES
+        )
         print(
             f"[INFO] source={source.source_id} docs={len(source_documents)} "
-            f"rules_added={max(0, after - before)}"
+            f"rules_added={max(0, after - before)} docs_reused={skipped}"
         )
 
     rules = deduplicate_rules(rules)
@@ -3306,8 +3773,18 @@ def write_json(path: Path, payload: Any) -> None:
 
 
 def main() -> None:
-    catalog = load_source_catalog(SOURCE_CATALOG_PATH)
-    rules = build_rules_from_sources(catalog)
+    catalog = merge_source_catalog(
+        load_source_catalog(SOURCE_CATALOG_PATH),
+        load_discovered_source_candidates(DISCOVERED_SOURCES_PATH),
+    )
+    previous_rules = load_previous_generated_rules(OUTPUT_RULES_PATH) if ENABLE_INCREMENTAL_FETCH else []
+    fetch_state = load_fetch_state(SOURCE_FETCH_STATE_PATH) if ENABLE_INCREMENTAL_FETCH else None
+    if ENABLE_INCREMENTAL_FETCH and not previous_rules:
+        if fetch_state is not None:
+            fetch_state["_disable_skip"] = True
+        print("[INFO] Cache incremental inactif pour ce run: aucune regle precedente a reutiliser.")
+
+    rules = build_rules_from_sources(catalog, fetch_state=fetch_state, previous_rules=previous_rules)
     ai_audit = run_ai_rule_audit(rules)
     apply_ai_audit_to_rules(rules, ai_audit)
     rules = enrich_rules_for_publication(rules)
@@ -3318,6 +3795,9 @@ def main() -> None:
     write_quality_report(QUALITY_REPORT_PATH, quality_report)
     write_json(OUTPUT_DOCUMENTS_PATH, source_documents)
     write_json(OUTPUT_CANDIDATES_PATH, rule_candidates)
+    if fetch_state is not None:
+        fetch_state.pop("_disable_skip", None)
+        write_json(SOURCE_FETCH_STATE_PATH, fetch_state)
 
     print(f"[OK] {len(rules)} regles generees -> {OUTPUT_RULES_PATH}")
     print(f"[OK] Rapport qualite -> {QUALITY_REPORT_PATH}")
