@@ -21,6 +21,9 @@ jobs:
       REG_SOURCE_CATALOG_FILE: data/regulations/source_endpoints.json
       REG_SOURCE_DISCOVERY_CONFIG_FILE: data/regulations/source_discovery_config.json
       REG_DISCOVERED_SOURCES_FILE: data/regulations/generated_source_candidates.json
+      REG_SOURCE_COVERAGE_REPORT_FILE: data/regulations/source_coverage_report.json
+      REG_QUALITY_EXPECTATIONS_FILE: data/regulations/quality_expectations.json
+      REG_RAW_DOCUMENT_STORE_DIR: data/regulations/raw_documents
       REG_STATIC_LEGIFRANCE_RULES_FILE: data/regulations/static_legifrance_rules.json
       REG_GENERATED_RULES_FILE: data/regulations/generated_rules.json
       REG_GEOSPATIAL_RULES_FILE: data/regulations/generated_rules.json
@@ -34,6 +37,7 @@ jobs:
       REG_AI_MODEL: ${{ vars.REG_AI_MODEL || 'openrouter/free' }}
       REG_AI_MAX_RULES: ${{ vars.REG_AI_MAX_RULES || '200' }}
       REG_DISCOVERY_ENABLE_AI_CLASSIFIER: ${{ vars.REG_DISCOVERY_ENABLE_AI_CLASSIFIER || 'false' }}
+      REG_MARK_MISSING_RULES: ${{ vars.REG_MARK_MISSING_RULES || 'true' }}
       REG_ENABLE_PDF_OCR: ${{ vars.REG_ENABLE_PDF_OCR || 'false' }}
       REG_OCR_LANG: "fra+eng"
       REG_OCR_MIN_TEXT_CHARS: "900"
@@ -71,6 +75,8 @@ jobs:
             data/regulations/generated_rule_candidates.json
             data/regulations/source_documents_manifest.json
             data/regulations/generated_source_candidates.json
+            data/regulations/source_coverage_report.json
+            data/regulations/raw_documents
           key: regulations-feed-${{ github.ref_name }}-${{ github.run_id }}
           restore-keys: |
             regulations-feed-${{ github.ref_name }}-
@@ -80,6 +86,20 @@ jobs:
 
       - name: Build regulations feed from official sources
         run: python -m pscripts.regulations.build_regulations_feed
+
+      - name: Upload regulations artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: regulations-feed
+          path: |
+            data/regulations/generated_rules.json
+            data/regulations/quality_report.json
+            data/regulations/generated_rule_candidates.json
+            data/regulations/source_documents_manifest.json
+            data/regulations/generated_source_candidates.json
+            data/regulations/source_coverage_report.json
+            data/regulations/source_fetch_state.json
+            data/regulations/raw_documents
 
       - name: Sync regulations database
         run: python -m pscripts.refresh_regulations_database

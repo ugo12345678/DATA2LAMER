@@ -1,4 +1,4 @@
-name: Build regulations feed
+name: Build Regulations Artifacts
 
 on:
   workflow_dispatch:
@@ -8,12 +8,6 @@ on:
         required: true
         type: boolean
         default: true
-      sync_to_supabase:
-        description: "Sync generated regulations to Supabase"
-        required: true
-        type: boolean
-        default: false
-
 jobs:
   regulations:
     runs-on: ubuntu-latest
@@ -25,13 +19,14 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       REG_SOURCE_DISCOVERY_CONFIG_FILE: data/regulations/source_discovery_config.json
       REG_DISCOVERED_SOURCES_FILE: data/regulations/generated_source_candidates.json
+      REG_SOURCE_COVERAGE_REPORT_FILE: data/regulations/source_coverage_report.json
+      REG_QUALITY_EXPECTATIONS_FILE: data/regulations/quality_expectations.json
+      REG_RAW_DOCUMENT_STORE_DIR: data/regulations/raw_documents
       REG_AI_BASE_URL: ${{ vars.REG_AI_BASE_URL || 'https://openrouter.ai/api/v1' }}
       REG_AI_MODEL: ${{ vars.REG_AI_MODEL || 'openrouter/free' }}
       REG_AI_MAX_RULES: ${{ vars.REG_AI_MAX_RULES || '200' }}
       REG_DISCOVERY_ENABLE_AI_CLASSIFIER: ${{ vars.REG_DISCOVERY_ENABLE_AI_CLASSIFIER || 'false' }}
       REG_ENABLE_PDF_OCR: "false"
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY || secrets.SUPABASE_KEY }}
 
     steps:
       - name: Checkout
@@ -63,6 +58,8 @@ jobs:
             data/regulations/generated_rule_candidates.json
             data/regulations/source_documents_manifest.json
             data/regulations/generated_source_candidates.json
+            data/regulations/source_coverage_report.json
+            data/regulations/raw_documents
           key: regulations-feed-${{ github.ref_name }}-${{ github.run_id }}
           restore-keys: |
             regulations-feed-${{ github.ref_name }}-
@@ -70,7 +67,7 @@ jobs:
       - name: Discover regulation source candidates
         run: python -m pscripts.regulations.discover_regulation_sources
 
-      - name: Build regulations feed
+      - name: Build regulations artifacts
         run: python -m pscripts.regulations.build_regulations_feed
 
       - name: Upload generated regulations artifacts
@@ -83,8 +80,6 @@ jobs:
             data/regulations/generated_rule_candidates.json
             data/regulations/source_documents_manifest.json
             data/regulations/generated_source_candidates.json
+            data/regulations/source_coverage_report.json
             data/regulations/source_fetch_state.json
-
-      - name: Sync regulations to Supabase
-        if: ${{ inputs.sync_to_supabase }}
-        run: python -m pscripts.refresh_regulations_database
+            data/regulations/raw_documents

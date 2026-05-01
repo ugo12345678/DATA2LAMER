@@ -7,6 +7,7 @@ from pscripts.refresh_regulations_database import (
     bbox_overlap,
     extract_bbox_from_geometry_columns,
     extract_bbox_from_numeric_columns,
+    mark_missing_rule_versions,
     normalize_bbox,
     primary_citation,
     rule_version_fingerprint,
@@ -41,6 +42,49 @@ class _FakeClient:
     def table(self, name):
         table = self.tables.setdefault(name, _FakeTable())
         return table
+
+
+class _FakeVersionResponse:
+    def __init__(self, data):
+        self.data = data
+
+
+class _FakeVersionTable:
+    def __init__(self, current_rows):
+        self.current_rows = current_rows
+        self.updated_payload = None
+        self.updated_ids = None
+
+    def select(self, *_args, **_kwargs):
+        return self
+
+    def eq(self, *_args, **_kwargs):
+        return self
+
+    def limit(self, *_args, **_kwargs):
+        return self
+
+    def update(self, payload):
+        self.updated_payload = payload
+        return self
+
+    def in_(self, _column, values):
+        self.updated_ids = values
+        return self
+
+    def execute(self):
+        if self.updated_payload is not None:
+            return _FakeVersionResponse([])
+        return _FakeVersionResponse(self.current_rows)
+
+
+class _FakeVersionClient:
+    def __init__(self, current_rows):
+        self.version_table = _FakeVersionTable(current_rows)
+
+    def table(self, name):
+        self.assert_name = name
+        return self.version_table
 
 
 class RefreshRegulationsDatabaseTests(unittest.TestCase):
@@ -278,6 +322,26 @@ class RefreshRegulationsDatabaseTests(unittest.TestCase):
         changed_rule = dict(base_rule, metric_value=45)
 
         self.assertNotEqual(rule_version_fingerprint(base_rule), rule_version_fingerprint(changed_rule))
+
+    def test_mark_missing_rule_versions_closes_unseen_current_versions(self) -> None:
+        client = _FakeVersionClient(
+            [
+                {"id": "v1", "rule_key": "rule.seen"},
+                {"id": "v2", "rule_key": "rule.old"},
+            ]
+        )
+
+        count = mark_missing_rule_versions(
+            client,
+            {"rule.seen"},
+            "2026-05-01T00:00:00+00:00",
+            "run-1",
+        )
+
+        self.assertEqual(count, 1)
+        self.assertEqual(client.version_table.updated_ids, ["v2"])
+        self.assertEqual(client.version_table.updated_payload["status"], "possibly_removed")
+        self.assertFalse(client.version_table.updated_payload["is_current"])
 
     def test_safe_chunk_index_stays_in_postgres_integer_range(self) -> None:
         value = safe_chunk_index("species.bar.declaration.mediterranee")

@@ -1,0 +1,98 @@
+{
+  "expectations": [
+    {
+      "id": "core_min_size_rules",
+      "label": "Regles de tailles minimales",
+      "severity": "warning",
+      "any_of": [
+        {
+          "rule_type": "MIN_SIZE"
+        }
+      ]
+    },
+    {
+      "id": "core_quota_rules",
+      "label": "Regles de quotas",
+      "severity": "warning",
+      "any_of": [
+        {
+          "rule_type": "QUOTA"
+        }
+      ]
+    },
+    {
+      "id": "bar_rules",
+      "label": "Reglementation bar",
+      "severity": "warning",
+      "any_of": [
+        {
+          "species_common_name": "bar"
+        },
+        {
+          "title_contains": "bar"
+        },
+        {
+          "description_contains": "bar"
+        }
+      ]
+    },
+    {
+      "id": "lieu_jaune_rules",
+      "label": "Reglementation lieu jaune",
+      "severity": "warning",
+      "any_of": [
+        {
+          "species_common_name": "lieu jaune"
+        },
+        {
+          "title_contains": "lieu jaune"
+        },
+        {
+          "description_contains": "lieu jaune"
+        }
+      ]
+    },
+    {
+      "id": "sensitive_species_declaration",
+      "label": "Declaration des especes sensibles",
+      "severity": "warning",
+      "any_of": [
+        {
+          "constraint_type": "declaration_or_local_rule"
+        },
+        {
+          "title_contains": "declaration des captures"
+        },
+        {
+          "description_contains": "recfishing"
+        }
+      ]
+    },
+    {
+      "id": "spearfishing_framework",
+      "label": "Socle peche sous-marine",
+      "severity": "warning",
+      "any_of": [
+        {
+          "rule_type": "SPEARFISHING_GENERAL"
+        },
+        {
+          "activity_type": "spearfishing"
+        }
+      ]
+    },
+    {
+      "id": "diving_framework",
+      "label": "Socle plongee",
+      "severity": "warning",
+      "any_of": [
+        {
+          "rule_type": "DIVING_GENERAL"
+        },
+        {
+          "activity_type": "diving"
+        }
+      ]
+    }
+  ]
+}

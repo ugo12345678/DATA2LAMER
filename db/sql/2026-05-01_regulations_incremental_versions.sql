@@ -5,6 +5,7 @@ alter table public.reg_source_documents
   add column if not exists etag text,
   add column if not exists last_modified text,
   add column if not exists content_hash text,
+  add column if not exists raw_storage_path text,
   add column if not exists first_seen_at timestamptz not null default now(),
   add column if not exists last_seen_at timestamptz,
   add column if not exists last_checked_at timestamptz;
@@ -60,6 +61,7 @@ create table if not exists public.reg_rule_versions (
 );
 
 create index if not exists reg_source_documents_content_hash_idx on public.reg_source_documents(content_hash);
+create index if not exists reg_source_documents_raw_storage_path_idx on public.reg_source_documents(raw_storage_path);
 create index if not exists reg_source_documents_last_checked_idx on public.reg_source_documents(last_checked_at desc);
 create index if not exists reg_source_candidates_status_idx on public.reg_source_candidates(status);
 create index if not exists reg_source_candidates_url_idx on public.reg_source_candidates(source_url);

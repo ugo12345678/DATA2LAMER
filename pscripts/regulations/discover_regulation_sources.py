@@ -35,6 +35,9 @@ from pscripts.regulations.build_regulations_feed import (
 CONFIG_PATH = Path(os.environ.get("REG_SOURCE_DISCOVERY_CONFIG_FILE", "data/regulations/source_discovery_config.json"))
 SOURCE_CATALOG_PATH = Path(os.environ.get("REG_SOURCE_CATALOG_FILE", "data/regulations/source_endpoints.json"))
 OUTPUT_PATH = Path(os.environ.get("REG_DISCOVERED_SOURCES_FILE", "data/regulations/generated_source_candidates.json"))
+COVERAGE_REPORT_PATH = Path(
+    os.environ.get("REG_SOURCE_COVERAGE_REPORT_FILE", "data/regulations/source_coverage_report.json")
+)
 ENABLE_AI_CLASSIFIER = os.environ.get("REG_DISCOVERY_ENABLE_AI_CLASSIFIER", "false").lower() == "true"
 MAX_AI_CANDIDATES = int(os.environ.get("REG_DISCOVERY_AI_MAX_CANDIDATES", "80"))
 
@@ -423,12 +426,60 @@ def discover_sources(
     return candidates
 
 
+def build_source_coverage_report(
+    config: dict[str, Any],
+    candidates: list[dict[str, Any]],
+    existing_urls: set[str],
+) -> dict[str, Any]:
+    status_counts: dict[str, int] = {}
+    for candidate in candidates:
+        status = str(candidate.get("status") or "unknown")
+        status_counts[status] = status_counts.get(status, 0) + 1
+
+    domains: list[dict[str, Any]] = []
+    for domain in discovery_domains(config):
+        domain_candidates = [
+            candidate
+            for candidate in candidates
+            if allowed_host(str(candidate.get("url") or ""), domain)
+        ]
+        domain_existing = [
+            url
+            for url in existing_urls
+            if allowed_host(url, domain)
+        ]
+        domains.append(
+            {
+                "host": domain.host,
+                "authority_name": domain.authority_name,
+                "source_type": domain.source_type,
+                "seed_url_count": len(domain.seed_urls),
+                "sitemap_url_count": len(domain.sitemap_urls),
+                "existing_source_count": len(domain_existing),
+                "candidate_count": len(domain_candidates),
+                "auto_accepted_count": sum(1 for item in domain_candidates if item.get("status") == "auto_accepted"),
+                "candidate_urls": [item.get("url") for item in domain_candidates[:20]],
+            }
+        )
+
+    return {
+        "generated_at": now_utc_iso(),
+        "configured_domain_count": len(domains),
+        "existing_catalog_url_count": len(existing_urls),
+        "candidate_count": len(candidates),
+        "status_counts": dict(sorted(status_counts.items())),
+        "domains": domains,
+    }
+
+
 def main() -> None:
     config = load_discovery_config(CONFIG_PATH)
     existing_catalog = load_source_catalog(SOURCE_CATALOG_PATH)
     existing_urls = {canonicalize_url(source.url) for source in existing_catalog}
     candidates = discover_sources(config, existing_urls)
+    coverage_report = build_source_coverage_report(config, candidates, existing_urls)
     write_json(OUTPUT_PATH, candidates)
+    write_json(COVERAGE_REPORT_PATH, coverage_report)
 
     accepted = sum(1 for item in candidates if item.get("status") == "auto_accepted")
     print(
@@ -437,6 +488,7 @@ def main() -> None:
                 "candidate_count": len(candidates),
                 "auto_accepted_count": accepted,
                 "output": str(OUTPUT_PATH),
+                "coverage_report": str(COVERAGE_REPORT_PATH),
             },
             ensure_ascii=False,
         )

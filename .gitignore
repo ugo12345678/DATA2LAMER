@@ -69,6 +69,8 @@ data/regulations/generated_rule_candidates.json
 data/regulations/source_documents_manifest.json
 data/regulations/source_fetch_state.json
 data/regulations/generated_source_candidates.json
+data/regulations/source_coverage_report.json
+data/regulations/raw_documents/
 
 # Keep config/reference data
 !data/

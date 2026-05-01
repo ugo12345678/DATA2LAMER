@@ -20,6 +20,9 @@ import requests
 SOURCE_CATALOG_PATH = Path(os.environ.get("REG_SOURCE_CATALOG_FILE", "data/regulations/source_endpoints.json"))
 OUTPUT_RULES_PATH = Path(os.environ.get("REG_GENERATED_RULES_FILE", "data/regulations/generated_rules.json"))
 QUALITY_REPORT_PATH = Path(os.environ.get("REG_QUALITY_REPORT_FILE", "data/regulations/quality_report.json"))
+QUALITY_EXPECTATIONS_PATH = Path(
+    os.environ.get("REG_QUALITY_EXPECTATIONS_FILE", "data/regulations/quality_expectations.json")
+)
 OUTPUT_CANDIDATES_PATH = Path(
     os.environ.get("REG_RULE_CANDIDATES_FILE", "data/regulations/generated_rule_candidates.json")
 )
@@ -31,6 +34,9 @@ DISCOVERED_SOURCES_PATH = Path(
 )
 SOURCE_FETCH_STATE_PATH = Path(
     os.environ.get("REG_SOURCE_FETCH_STATE_FILE", "data/regulations/source_fetch_state.json")
+)
+RAW_DOCUMENT_STORE_DIR = Path(
+    os.environ.get("REG_RAW_DOCUMENT_STORE_DIR", "data/regulations/raw_documents")
 )
 STATIC_LEGIFRANCE_RULES_PATH = Path(
     os.environ.get("REG_STATIC_LEGIFRANCE_RULES_FILE", "data/regulations/static_legifrance_rules.json")
@@ -393,6 +399,7 @@ class SourceDocument:
     document_hash: str | None = None
     content_hash: str | None = None
     content_length: int | None = None
+    raw_storage_path: str | None = None
     fetched_at: str | None = None
     checked_at: str | None = None
     etag: str | None = None
@@ -671,6 +678,35 @@ def sha256_text(value: str) -> str:
 
 def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
+
+
+def raw_document_extension(url: str, *, binary: bool, content_type: str | None = None) -> str:
+    content_type = str(content_type or "").lower()
+    path = urlparse(url).path.lower()
+    if binary or "pdf" in content_type or path.endswith(".pdf"):
+        return ".pdf"
+    if path.endswith(".xml") or "xml" in content_type:
+        return ".xml"
+    if path.endswith(".json") or "json" in content_type:
+        return ".json"
+    return ".html"
+
+
+def store_raw_document(
+    content: bytes,
+    content_hash: str,
+    *,
+    binary: bool,
+    url: str,
+    content_type: str | None = None,
+) -> str:
+    extension = raw_document_extension(url, binary=binary, content_type=content_type)
+    shard = content_hash[:2] or "00"
+    path = RAW_DOCUMENT_STORE_DIR / shard / f"{content_hash}{extension}"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.exists():
+        path.write_bytes(content)
+    return path.as_posix()
 
 
 def canonicalize_url(url: str) -> str:
@@ -1037,16 +1073,25 @@ def fetch_url_with_state(
             content = response.content
             content_hash = sha256_bytes(content)
             unchanged = bool(previous_hash and previous_hash == content_hash and not disable_skip)
+            content_type = response.headers.get("Content-Type")
+            raw_storage_path = store_raw_document(
+                content,
+                content_hash,
+                binary=binary,
+                url=canonical_url,
+                content_type=content_type,
+            )
             metadata = {
                 **previous,
                 "url": canonical_url,
                 "document_hash": content_hash,
                 "content_hash": content_hash,
                 "content_length": len(content),
+                "raw_storage_path": raw_storage_path,
                 "document_type": "pdf" if binary else "html",
                 "etag": response.headers.get("ETag") or response.headers.get("Etag"),
                 "last_modified": response.headers.get("Last-Modified"),
-                "content_type": response.headers.get("Content-Type"),
+                "content_type": content_type,
                 "fetched_at": previous.get("fetched_at") if unchanged else now_iso,
                 "checked_at": now_iso,
                 "fetch_status": "unchanged_hash" if unchanged else "fetched",
@@ -1596,6 +1641,7 @@ def citation_for_rule(rule: dict[str, Any]) -> dict[str, Any]:
         "document_hash": document_hash,
         "content_hash": source.get("content_hash") or document_hash,
         "content_length": source.get("content_length"),
+        "raw_storage_path": source.get("raw_storage_path"),
         "etag": source.get("etag"),
         "last_modified": source.get("last_modified"),
         "checked_at": source.get("checked_at"),
@@ -2441,11 +2487,19 @@ def collect_source_documents(
         now_iso = now_utc().isoformat()
         raw = text.encode("utf-8")
         content_hash = sha256_bytes(raw)
+        raw_storage_path = store_raw_document(
+            raw,
+            content_hash,
+            binary=document_type == "pdf",
+            url=url,
+            content_type="text/html; charset=utf-8",
+        )
         return {
             "url": canonicalize_url(url),
             "document_hash": content_hash,
             "content_hash": content_hash,
             "content_length": len(raw),
+            "raw_storage_path": raw_storage_path,
             "document_type": document_type,
             "fetched_at": now_iso,
             "checked_at": now_iso,
@@ -2471,6 +2525,7 @@ def collect_source_documents(
                 document_hash=metadata.get("document_hash") or metadata.get("content_hash"),
                 content_hash=metadata.get("content_hash") or metadata.get("document_hash"),
                 content_length=metadata.get("content_length"),
+                raw_storage_path=metadata.get("raw_storage_path"),
                 fetched_at=metadata.get("fetched_at"),
                 checked_at=metadata.get("checked_at"),
                 etag=metadata.get("etag"),
@@ -2500,11 +2555,19 @@ def collect_source_documents(
                 text = extract_pdf_text_with_optional_ocr(pdf_bytes, canonical_url)
                 now_iso = now_utc().isoformat()
                 content_hash = sha256_bytes(pdf_bytes)
+                raw_storage_path = store_raw_document(
+                    pdf_bytes,
+                    content_hash,
+                    binary=True,
+                    url=canonical_url,
+                    content_type="application/pdf",
+                )
                 metadata = {
                     "url": canonical_url,
                     "document_hash": content_hash,
                     "content_hash": content_hash,
                     "content_length": len(pdf_bytes),
+                    "raw_storage_path": raw_storage_path,
                     "document_type": "pdf",
                     "fetched_at": now_iso,
                     "checked_at": now_iso,
@@ -2805,14 +2868,110 @@ def add_quality_issue(
     issues.append(issue)
 
 
+def load_quality_expectations(path: Path = QUALITY_EXPECTATIONS_PATH) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return []
+    if isinstance(payload, dict):
+        payload = payload.get("expectations") or []
+    if not isinstance(payload, list):
+        return []
+    return [item for item in payload if isinstance(item, dict)]
+
+
+def expectation_rule_value(rule: dict[str, Any], field: str) -> Any:
+    if field == "zone_code":
+        return rule_zone_code(rule)
+    if field == "source_url":
+        return (rule.get("source") or {}).get("source_url")
+    if field == "authority_name":
+        return (rule.get("source") or {}).get("authority_name")
+    return rule.get(field)
+
+
+def rule_matches_expectation_filter(rule: dict[str, Any], expected_filter: dict[str, Any]) -> bool:
+    for key, expected_value in expected_filter.items():
+        if key in {"id", "label", "severity"}:
+            continue
+        if key.endswith("_contains"):
+            field = key[: -len("_contains")]
+            value = fold_text(str(expectation_rule_value(rule, field) or ""))
+            expected_text = fold_text(str(expected_value or ""))
+            if expected_text not in value:
+                return False
+            continue
+        if key == "metric_value":
+            if normalize_metric_value(rule.get("metric_value")) != normalize_metric_value(expected_value):
+                return False
+            continue
+        value = expectation_rule_value(rule, key)
+        if fold_text(str(value or "")) != fold_text(str(expected_value or "")):
+            return False
+    return True
+
+
+def rule_matches_expectation(rule: dict[str, Any], expectation: dict[str, Any]) -> bool:
+    any_of = expectation.get("any_of")
+    if isinstance(any_of, list):
+        return any(
+            isinstance(item, dict) and rule_matches_expectation_filter(rule, item)
+            for item in any_of
+        )
+    return rule_matches_expectation_filter(rule, expectation)
+
+
+def evaluate_quality_expectations(
+    rules: list[dict[str, Any]],
+    expectations: list[dict[str, Any]],
+) -> dict[str, Any]:
+    missing: list[dict[str, Any]] = []
+    matched: list[dict[str, Any]] = []
+    for expectation in expectations:
+        expectation_id = str(expectation.get("id") or expectation.get("label") or "expectation")
+        matches = [str(rule.get("rule_key") or "") for rule in rules if rule_matches_expectation(rule, expectation)]
+        matches = [key for key in matches if key]
+        item = {
+            "id": expectation_id,
+            "label": expectation.get("label") or expectation_id,
+            "matched_rule_keys": sorted(set(matches)),
+        }
+        if matches:
+            matched.append(item)
+        else:
+            missing.append(
+                {
+                    "id": expectation_id,
+                    "label": expectation.get("label") or expectation_id,
+                    "severity": expectation.get("severity") or "warning",
+                    "filters": expectation.get("any_of") or {
+                        key: value
+                        for key, value in expectation.items()
+                        if key not in {"id", "label", "severity"}
+                    },
+                }
+            )
+    return {
+        "expected_count": len(expectations),
+        "matched_count": len(matched),
+        "missing_count": len(missing),
+        "matched": matched,
+        "missing": missing,
+    }
+
+
 def build_quality_report(
     rules: list[dict[str, Any]],
     ai_audit: dict[str, Any] | None = None,
+    quality_expectations: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     issues: list[dict[str, Any]] = []
     seen_keys: dict[str, int] = {}
     seen_signatures: dict[str, str] = {}
     conflict_values: dict[tuple[str, str, str, str, str], dict[str, Any]] = {}
+    expectations = load_quality_expectations() if quality_expectations is None else quality_expectations
 
     for rule in rules:
         rule_key = str(rule.get("rule_key") or "")
@@ -2995,6 +3154,19 @@ def build_quality_report(
         for rule in rules
         if str(rule.get("effective_date_source") or "").startswith("parser")
     )
+    coverage = evaluate_quality_expectations(rules, expectations)
+    for missing in coverage["missing"]:
+        add_quality_issue(
+            issues,
+            severity=str(missing.get("severity") or "warning"),
+            category="expected_coverage_missing",
+            message="Une couverture reglementaire attendue n'a pas ete retrouvee dans le feed genere.",
+            details={
+                "id": missing.get("id"),
+                "label": missing.get("label"),
+                "filters": missing.get("filters"),
+            },
+        )
 
     return {
         "generated_at": now_utc().isoformat(),
@@ -3007,6 +3179,7 @@ def build_quality_report(
         "validity_parser_count": validity_parser_count,
         "counts_by_type": counts_by_type,
         "counts_by_zone": dict(sorted(counts_by_zone.items())),
+        "coverage": coverage,
         "issue_count": len(issues),
         "issues": issues,
         "ai_audit": ai_audit or {"enabled": False, "status": "disabled", "issues": []},
@@ -3059,6 +3232,7 @@ def build_source_documents_manifest(rules: list[dict[str, Any]]) -> list[dict[st
                 "title": source.get("title"),
                 "document_type": "pdf" if str(source_url or "").lower().endswith(".pdf") else "html",
                 "content_length": content_length or 0,
+                "raw_storage_path": citation.get("raw_storage_path") or source.get("raw_storage_path"),
                 "fetched_at": source.get("fetched_at"),
                 "checked_at": source.get("checked_at") or now_utc().isoformat(),
                 "etag": source.get("etag"),
@@ -3648,6 +3822,8 @@ def attach_document_metadata(rule: dict[str, Any], document: SourceDocument) -> 
     source["canonical_url"] = document.url
     if document.content_length is not None:
         source["content_length"] = document.content_length
+    if document.raw_storage_path:
+        source["raw_storage_path"] = document.raw_storage_path
     if document.fetched_at:
         source["fetched_at"] = document.fetched_at
     if document.checked_at:

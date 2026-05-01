@@ -146,18 +146,20 @@ python -m pscripts.regulations.build_regulations_feed
 Sorties generees:
 
 - `data/regulations/generated_source_candidates.json`: nouvelles pages/PDF officiels decouverts depuis les hubs et sitemaps.
+- `data/regulations/source_coverage_report.json`: couverture de decouverte par domaine officiel configure.
 - `data/regulations/generated_rules.json`: regles triees, dedoublonnees et pretes pour la synchro Supabase.
-- `data/regulations/quality_report.json`: rapport de coherence, doublons probables, conflits de metriques et sources a verifier.
+- `data/regulations/quality_report.json`: rapport de coherence, doublons probables, conflits de metriques, attentes de couverture et sources a verifier.
 - `data/regulations/generated_rule_candidates.json`: candidats d'extraction avec statut, confiance, payload structure et audit IA eventuel.
 - `data/regulations/source_documents_manifest.json`: manifeste des documents sources, citations et chunks/preuves utilises par les regles.
+- `data/regulations/raw_documents/`: copie locale hashee des pages/PDF recuperes pour garder la preuve meme si l'URL change.
 
 Modele de donnees:
 
-- `reg_source_documents` conserve les documents sources hashes.
+- `reg_source_documents` conserve les documents sources hashes et le chemin de leur copie brute locale.
 - `reg_source_candidates` conserve les nouvelles sources detectees par les hubs/sitemaps et leur score de pertinence.
 - `reg_document_chunks` conserve les extraits/preuves.
 - `reg_rule_candidates` conserve les propositions brutes a trier.
-- `reg_rule_versions` conserve l'historique des versions observees pour chaque `rule_key`.
+- `reg_rule_versions` conserve l'historique des versions observees pour chaque `rule_key`; une version courante non revue dans un run complet passe en `possibly_removed` sans suppression.
 - `reg_rule_citations` relie chaque regle a sa preuve.
 - `reg_species` et `reg_rule_species` normalisent les especes.
 - `reg_rules.status` distingue `needs_review`, `published` et les futurs statuts d'archivage.
@@ -208,12 +210,16 @@ Variables utiles:
 
 - `REG_SOURCE_DISCOVERY_CONFIG_FILE`: configuration des hubs/sitemaps de decouverte, defaut `data/regulations/source_discovery_config.json`.
 - `REG_DISCOVERED_SOURCES_FILE`: candidats sources decouverts et acceptes par le build, defaut `data/regulations/generated_source_candidates.json`.
+- `REG_SOURCE_COVERAGE_REPORT_FILE`: rapport de couverture de la decouverte par domaine, defaut `data/regulations/source_coverage_report.json`.
+- `REG_QUALITY_EXPECTATIONS_FILE`: attentes minimales de couverture metier, defaut `data/regulations/quality_expectations.json`.
+- `REG_RAW_DOCUMENT_STORE_DIR`: repertoire des copies brutes hashees, defaut `data/regulations/raw_documents`.
 - `REG_DISCOVERY_ENABLE_AI_CLASSIFIER`: active le classement IA des sources candidates, defaut `false`.
 - `REG_LEGIFRANCE_FETCH_LIVE`: tente de lire Legifrance en direct, defaut `false`. Le site peut renvoyer `403`; le socle statique versionne est alors le chemin fiable.
 - `REG_INCREMENTAL_FETCH`: active le cache incremental des sources, defaut `true`.
 - `REG_SOURCE_FETCH_STATE_FILE`: fichier d'etat local des URLs deja vues, defaut `data/regulations/source_fetch_state.json`.
 - `REG_SOURCE_RECHECK_INTERVAL_HOURS`: delai minimal avant de recontroler une URL deja vue, defaut `20`.
 - `REG_FORCE_REFETCH`: force un retelechargement complet, defaut `false`.
+- `REG_MARK_MISSING_RULES`: marque les versions courantes non revues comme `possibly_removed`, defaut `true`.
 - `REG_AI_MODEL`: modele utilise pour l'audit IA, defaut `nvidia/nemotron-3-super-120b-a12b:free`.
 - `REG_AI_BASE_URL`: endpoint OpenAI-compatible, defaut `https://openrouter.ai/api/v1`. Les endpoints locaux (`localhost`, `127.0.0.1`) ne demandent pas de cle API.
 - `REG_AI_MAX_RULES`: nombre maximal de regles envoyees a l'audit IA, defaut `200`.

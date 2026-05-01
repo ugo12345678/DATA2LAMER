@@ -27,6 +27,7 @@ ZONES_TABLE = os.environ.get("REG_ZONES_TABLE", "zones")
 ENABLE_ZONES = os.environ.get("REG_ENABLE_ZONES", "true").lower() == "true"
 ENABLE_AUDIT_MODEL = os.environ.get("REG_ENABLE_AUDIT_MODEL", "true").lower() == "true"
 ENABLE_RULE_VERSIONING = os.environ.get("REG_ENABLE_RULE_VERSIONING", "true").lower() == "true"
+MARK_MISSING_RULES = os.environ.get("REG_MARK_MISSING_RULES", "true").lower() == "true"
 ROW_FETCH_LIMIT = int(os.environ.get("REG_FETCH_LIMIT", "10000"))
 CENTROID_DELTA_DEG = float(os.environ.get("REG_CENTROID_DELTA_DEG", "0.01"))
 ALLOW_SPOTS_FALLBACK_FOR_ZONE_UNION = (
@@ -333,9 +334,12 @@ def upsert_source_document(client, seed_rule: dict[str, Any], timestamp_iso: str
 
 def primary_citation(seed_rule: dict[str, Any]) -> dict[str, Any]:
     citations = seed_rule.get("citations") or []
-    if citations and isinstance(citations[0], dict):
-        return citations[0]
     source = seed_rule.get("source") or {}
+    if citations and isinstance(citations[0], dict):
+        citation = dict(citations[0])
+        citation.setdefault("content_hash", source.get("content_hash"))
+        citation.setdefault("raw_storage_path", source.get("raw_storage_path"))
+        return citation
     return {
         "source_url": source.get("source_url"),
         "source_title": source.get("title"),
@@ -343,6 +347,8 @@ def primary_citation(seed_rule: dict[str, Any]) -> dict[str, Any]:
         "quote": seed_rule.get("description") or "",
         "locator": seed_rule.get("legal_reference") or seed_rule.get("rule_key"),
         "document_hash": f"legacy:{source.get('source_url') or seed_rule.get('rule_key')}",
+        "content_hash": source.get("content_hash"),
+        "raw_storage_path": source.get("raw_storage_path"),
         "confidence_score": seed_rule.get("confidence_score"),
     }
 
@@ -477,6 +483,7 @@ def upsert_audit_source_document(
         "etag": citation.get("etag") or source.get("etag"),
         "last_modified": citation.get("last_modified") or source.get("last_modified"),
         "content_hash": citation.get("content_hash") or source.get("content_hash") or document_hash,
+        "raw_storage_path": citation.get("raw_storage_path") or source.get("raw_storage_path"),
         "last_seen_at": timestamp_iso,
         "last_checked_at": checked_at,
         "extraction_status": "ok",
@@ -717,6 +724,42 @@ def sync_rule_version(
     if not rows:
         raise RuntimeError("Upsert version reglementaire n'a retourne aucune ligne.")
     return rows[0]
+
+
+def mark_missing_rule_versions(
+    client,
+    seen_rule_keys: set[str],
+    timestamp_iso: str,
+    extraction_run_id: str | None,
+) -> int:
+    if not seen_rule_keys:
+        return 0
+
+    response = (
+        client.table("reg_rule_versions")
+        .select("id,rule_key")
+        .eq("is_current", True)
+        .limit(ROW_FETCH_LIMIT)
+        .execute()
+    )
+    missing_ids = [
+        str(row["id"])
+        for row in (response.data or [])
+        if row.get("id") and str(row.get("rule_key") or "") not in seen_rule_keys
+    ]
+    if not missing_ids:
+        return 0
+
+    client.table("reg_rule_versions").update(
+        {
+            "is_current": False,
+            "observed_to": timestamp_iso,
+            "status": "possibly_removed",
+            "last_seen_run_id": extraction_run_id,
+            "updated_at": timestamp_iso,
+        }
+    ).in_("id", missing_ids).execute()
+    return len(missing_ids)
 
 
 def resolve_rule_zone_bbox(seed_rule: dict[str, Any], spots_envelope: BBox, zones_envelope: BBox | None) -> BBox:
@@ -994,6 +1037,7 @@ def main() -> None:
         "source_documents_file": str(SOURCE_DOCUMENTS_PATH),
         "audit_model_enabled": ENABLE_AUDIT_MODEL,
         "rule_versioning_enabled": ENABLE_RULE_VERSIONING,
+        "mark_missing_rules_enabled": MARK_MISSING_RULES,
     }
 
     run_id = create_run(client, started_at, metadata)
@@ -1042,6 +1086,7 @@ def main() -> None:
         zone_assignments_count = 0
         citation_count = 0
         species_link_count = 0
+        seen_rule_keys: set[str] = set()
 
         for seed_rule in seed_rules:
             audit_document_row: dict[str, Any] | None = None
@@ -1113,12 +1158,24 @@ def main() -> None:
             )
 
             rules_count += 1
+            seen_rule_keys.add(str(seed_rule["rule_key"]))
             spot_assignments_count += assigned_spots
             zone_assignments_count += len(matched_zone_ids)
 
             print(
                 f"[OK] rule={seed_rule['rule_key']} zones={len(matched_zone_ids)} spots={assigned_spots} reg_zone={reg_zone_row['zone_code']}"
             )
+
+        missing_rule_version_count = 0
+        if ENABLE_RULE_VERSIONING and MARK_MISSING_RULES:
+            missing_rule_version_count = mark_missing_rule_versions(
+                client,
+                seen_rule_keys,
+                timestamp_iso,
+                extraction_run_id,
+            )
+            if missing_rule_version_count:
+                print(f"[WARN] versions possiblement retirees={missing_rule_version_count}")
 
         finalize_run(
             client,
@@ -1137,6 +1194,7 @@ def main() -> None:
                     "citation_count": citation_count,
                     "species_link_count": species_link_count,
                     "source_candidate_count": source_candidate_count,
+                    "missing_rule_version_count": missing_rule_version_count,
                     "extraction_run_id": extraction_run_id,
                 },
             },
@@ -1154,6 +1212,7 @@ def main() -> None:
                         "citation_count": citation_count,
                         "species_link_count": species_link_count,
                         "source_candidate_count": source_candidate_count,
+                        "missing_rule_version_count": missing_rule_version_count,
                     },
                 },
             )

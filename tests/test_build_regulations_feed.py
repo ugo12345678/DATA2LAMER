@@ -416,6 +416,36 @@ class BuildRegulationsFeedTests(unittest.TestCase):
         categories = {issue["category"] for issue in report["issues"]}
         self.assertIn("metric_conflict", categories)
 
+    def test_quality_report_tracks_expected_coverage(self) -> None:
+        rule = build_base_rule(
+            rule_key="species.bar.min-size.namo",
+            rule_type="MIN_SIZE",
+            title="Taille minimale bar",
+            description="Bar commun : 42 cm",
+            source=self.dirm_source,
+            source_url="https://www.dirm.example/a.pdf",
+            legal_reference=None,
+            metric_type="SIZE_MIN_CM",
+            metric_value=42,
+            metric_unit="cm",
+            species_common_name="bar",
+            species_scientific_name=None,
+            needs_manual_review=True,
+            notes="",
+        )
+
+        report = build_quality_report(
+            [rule],
+            quality_expectations=[
+                {"id": "bar_present", "species_common_name": "bar"},
+                {"id": "quota_present", "rule_type": "QUOTA"},
+            ],
+        )
+
+        self.assertEqual(report["coverage"]["matched_count"], 1)
+        self.assertEqual(report["coverage"]["missing_count"], 1)
+        self.assertIn("expected_coverage_missing", {issue["category"] for issue in report["issues"]})
+
     def test_apply_ai_audit_marks_rule_for_manual_review(self) -> None:
         rule = build_base_rule(
             rule_key="species.bar.quota.namo",
@@ -881,6 +911,31 @@ class BuildRegulationsFeedTests(unittest.TestCase):
         self.assertEqual(len(documents[0]["chunks"]), 2)
         self.assertEqual(candidates[0]["document_hash"], documents[0]["document_hash"])
         self.assertIn("source_context", candidates[0])
+
+    def test_source_manifest_preserves_raw_storage_path(self) -> None:
+        rule = build_base_rule(
+            rule_key="species.bar.min-size.namo",
+            rule_type="MIN_SIZE",
+            title="Taille minimale bar",
+            description="Bar commun : 42 cm",
+            source=self.dirm_source,
+            source_url="https://www.dirm.example/a.pdf",
+            legal_reference=None,
+            metric_type="SIZE_MIN_CM",
+            metric_value=42,
+            metric_unit="cm",
+            species_common_name="bar",
+            species_scientific_name=None,
+            needs_manual_review=True,
+            notes="",
+        )
+        rule["source"]["raw_storage_path"] = "data/regulations/raw_documents/ab/abc.pdf"
+        enriched = enrich_rule_for_publication(rule)
+
+        documents = build_source_documents_manifest([enriched])
+
+        self.assertEqual(documents[0]["raw_storage_path"], "data/regulations/raw_documents/ab/abc.pdf")
+        self.assertEqual(enriched["citations"][0]["raw_storage_path"], "data/regulations/raw_documents/ab/abc.pdf")
 
 
 if __name__ == "__main__":
