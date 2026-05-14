@@ -27,11 +27,14 @@ def _chunk_dataframe(df: pd.DataFrame, chunk_size: int):
 def _get_with_retry(session: requests.Session, url: str, params: dict[str, Any]) -> dict | list:
     last_exc: Exception | None = None
     last_status: int | None = None
+    last_body: str | None = None
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             response = session.get(url, params=params, timeout=REQUEST_TIMEOUT)
             last_status = response.status_code
+            if response.status_code >= 400:
+                last_body = response.text[:500]
             if response.status_code == 429:
                 time.sleep(min(30, 2**attempt))
                 continue
@@ -47,7 +50,8 @@ def _get_with_retry(session: requests.Session, url: str, params: dict[str, Any])
                 break
             time.sleep(min(30, 2**attempt))
 
-    raise RuntimeError(f"Open-Meteo request failed for {url} status={last_status}") from last_exc
+    reason = f" body={last_body}" if last_body else ""
+    raise RuntimeError(f"Open-Meteo request failed for {url} status={last_status}{reason}") from last_exc
 
 
 def _get_with_variable_fallback(
@@ -235,6 +239,13 @@ class OpenMeteoHourlySource(ForecastSource):
         rows: list[SourceValue] = []
 
         for spots_batch in _chunk_dataframe(spots, self.batch_size):
+            rows.extend(self._fetch_batch(spots_batch, run_time))
+            time.sleep(SLEEP_BETWEEN_BATCHES_SEC)
+
+        return rows
+
+    def _fetch_batch(self, spots_batch: pd.DataFrame, run_time: datetime) -> list[SourceValue]:
+        try:
             params = self.request_params(spots_batch)
             payload, variable_map = _get_with_variable_fallback(
                 self.session,
@@ -243,22 +254,38 @@ class OpenMeteoHourlySource(ForecastSource):
                 self.variable_map,
             )
             items = _normalize_payload(payload, expected_count=len(spots_batch))
-
-            for (_, spot), item in zip(spots_batch.iterrows(), items):
-                rows.extend(
-                    _rows_from_hourly_payload(
-                        payload_item=item,
-                        spot=spot,
-                        source_code=self.config.code,
-                        variable_map=variable_map,
-                        run_time=run_time,
-                        resolution_minutes=60,
-                        model_name=getattr(self, "model_name", self.config.code),
-                    )
+        except RuntimeError as exc:
+            if len(spots_batch) <= 1:
+                spot = spots_batch.iloc[0]
+                print(
+                    f"[WARN] {self.config.code} skipped for spot "
+                    f"{spot.get('spot_name') or spot.get('spot_id')}: {exc}"
                 )
+                return []
 
-            time.sleep(SLEEP_BETWEEN_BATCHES_SEC)
+            midpoint = len(spots_batch) // 2
+            print(
+                f"[WARN] {self.config.code} batch of {len(spots_batch)} spots failed; "
+                "retrying smaller batches."
+            )
+            return self._fetch_batch(spots_batch.iloc[:midpoint].copy(), run_time) + self._fetch_batch(
+                spots_batch.iloc[midpoint:].copy(),
+                run_time,
+            )
 
+        rows: list[SourceValue] = []
+        for (_, spot), item in zip(spots_batch.iterrows(), items):
+            rows.extend(
+                _rows_from_hourly_payload(
+                    payload_item=item,
+                    spot=spot,
+                    source_code=self.config.code,
+                    variable_map=variable_map,
+                    run_time=run_time,
+                    resolution_minutes=60,
+                    model_name=getattr(self, "model_name", self.config.code),
+                )
+            )
         return rows
 
 
