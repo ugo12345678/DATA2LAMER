@@ -40,6 +40,18 @@ class R2SourceValueArchive:
     def available(self) -> bool:
         return bool(self.bucket and self.endpoint_url and self.access_key_id and self.secret_access_key)
 
+    def missing_settings(self) -> list[str]:
+        missing = []
+        if not self.bucket:
+            missing.append("R2_BUCKET")
+        if not self.endpoint_url:
+            missing.append("R2_ENDPOINT_URL")
+        if not self.access_key_id:
+            missing.append("R2_ACCESS_KEY_ID")
+        if not self.secret_access_key:
+            missing.append("R2_SECRET_ACCESS_KEY")
+        return missing
+
     def client(self):
         if self._client is None:
             import boto3

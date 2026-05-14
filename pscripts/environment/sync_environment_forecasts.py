@@ -19,7 +19,6 @@ from pscripts.environment.sources.open_meteo import (
     OpenMeteoMarineDwdGwamSource,
     OpenMeteoMarineGfsWaveSource,
     OpenMeteoMarineMeteoFranceCurrentsSource,
-    OpenMeteoMarineMeteoFranceSstSource,
     OpenMeteoMarineMeteoFranceWaveSource,
     OpenMeteoMarineSource,
     OpenMeteoMeteoFranceSource,
@@ -38,7 +37,6 @@ def build_sources() -> list[ForecastSource]:
         OpenMeteoMarineSource(),
         OpenMeteoMarineMeteoFranceWaveSource(),
         OpenMeteoMarineMeteoFranceCurrentsSource(),
-        OpenMeteoMarineMeteoFranceSstSource(),
         OpenMeteoMarineDwdEwamSource(),
         OpenMeteoMarineDwdGwamSource(),
         OpenMeteoMarineGfsWaveSource(),
@@ -125,7 +123,10 @@ def main() -> None:
     if r2_archive.available:
         print(f"[INFO] R2 raw source archive enabled: bucket={r2_archive.bucket} prefix={r2_archive.prefix}")
     else:
-        print("[INFO] R2 raw source archive is not configured.")
+        print(
+            "[INFO] R2 raw source archive is not configured. Missing settings: "
+            + ", ".join(r2_archive.missing_settings())
+        )
 
     values, run_time = fetch_source_values(sources, data_repo, r2_archive)
     if not values:
