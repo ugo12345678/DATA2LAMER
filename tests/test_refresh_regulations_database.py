@@ -193,7 +193,7 @@ class RefreshRegulationsDatabaseTests(unittest.TestCase):
         self.assertTrue(bbox_overlap(a, b))
         self.assertFalse(bbox_overlap(a, c))
 
-    def test_to_spot_items_keeps_zone_link(self) -> None:
+    def test_to_spot_items_does_not_keep_zone_link(self) -> None:
         rows = [
             {
                 "id": "11111111-1111-1111-1111-111111111111",
@@ -215,7 +215,7 @@ class RefreshRegulationsDatabaseTests(unittest.TestCase):
 
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0]["id"], "11111111-1111-1111-1111-111111111111")
-        self.assertEqual(items[0]["zone_id"], "22222222-2222-2222-2222-222222222222")
+        self.assertNotIn("zone_id", items[0])
 
     def test_to_zone_items_from_polygon(self) -> None:
         rows = [

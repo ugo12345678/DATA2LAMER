@@ -1,138 +1,104 @@
-# Prédiction de visibilité sous-marine en Bretagne
+# DATA2LAMER - donnees meteo, marines et observations de plongee
 
-Repository Python pour construire un pipeline de données et de machine learning dédié à la prédiction de la visibilité sous-marine en Bretagne.
+Repository Python pour recuperer, normaliser et consolider des donnees environnementales autour des spots de plongee.
 
-## Ce que fait le repository
+Le projet ne produit pas de prediction de visibilite et n'utilise pas de modele ML. La phase courante consiste a construire un socle fiable :
 
-Le projet permet de :
+- previsions meteo et marines horaires sur 5 a 7 jours par spot ;
+- consolidation multi-sources quand plusieurs fournisseurs donnent la meme metrique ;
+- conservation de la provenance des valeurs utilisees ;
+- jointure future avec les sorties de plongee et la visibilite reellement observee.
 
-- construire une cible de visibilité (`zsd`)
-- récupérer et préparer plusieurs familles de variables environnementales :
-  - physique (`phy`)
-  - vagues (`wav`)
-  - biogéochimie (`bgc`)
-  - météo (`meteo`)
-  - variables statiques (`static`) :
-    - bathymétrie
-    - pente
-    - distance à la côte
-- joindre toutes les features
-- préparer un dataset final pour le machine learning
-- entraîner un modèle baseline
+## Architecture BDD
 
-Le pipeline est organisé autour de scripts Python exécutables individuellement ou via `main.py`.
+Deux bases sont prevues.
 
-## Structure du projet
+### VU2LAMER
+
+Base applicative. Elle ne recoit qu'une table de forecast consolidee :
 
 ```text
-.
-├── config/
-├── src/
-│   ├── pipeline/
-│   └── utils/
-├── scripts/
-├── data/
-│   └── config/
-│       └── spots_bretagne_mvp_50.csv
-├── main.py
-├── requirements.txt
-├── README.md
-└── .gitignore
-Scripts du pipeline
+db/vu2lamer/2026-05-14_environment_forecasts.sql
+```
 
-Ordre d’exécution :
+Table principale :
 
-01_build_target_zsd_pipeline.py
+```text
+public.environment_forecasts
+```
 
-02_build_phy_pipeline.py
+Une ligne correspond a un `spot_id` du catalogue `public.spots` et une heure UTC (`valid_time`). Les colonnes contiennent les valeurs consolidees : vent, rafales, houle, vagues, temperature air/eau, pression, nuages, pluie, visibilite meteo, niveau marin, courants, salinite, chlorophylle, etc.
 
-03_build_wav_pipeline.py
+La colonne `provenance` conserve, par metrique, les sources et valeurs utilisees pour calculer la valeur finale.
+Par defaut, cette provenance est compactee (`APP_PROVENANCE_MODE=compact`) pour limiter le poids de la table applicative. Le mode `full` garde les valeurs source detaillees dans VU2LAMER, mais DATA2LAMER reste l'endroit recommande pour l'historique brut.
+La migration supprime l'ancienne table `forecast_predictions`.
 
-04_build_bgc_pipeline.py
+### DATA2LAMER
 
-05_build_meteo_pipeline.py
+Base technique, vide au depart. Elle stocke les tables de travail :
 
-05b_build_static_pipeline.py
+```text
+db/data2lamer/2026-05-14_environment_forecast_pipeline.sql
+```
 
-06_join_features.py
+Tables :
 
-07_prepare_ml_dataset.py
+- `environment_sources`
+- `environment_sync_runs`
+- `forecast_source_values`
+- `spot_source_grid_points`
 
-08_train_baseline_model.py
+Si les variables `DATA2LAMER_SUPABASE_URL` et `DATA2LAMER_SUPABASE_SERVICE_KEY` ne sont pas definies, le pipeline fonctionne quand meme mais ne persiste pas les valeurs brutes.
 
-Préparer l’environnement de travail
-1. Créer un environnement virtuel
+## Sources gratuites
 
-Sous Windows PowerShell :
+Sources activees sans abonnement payant :
 
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-2. Mettre à jour pip
-python -m pip install --upgrade pip
-3. Installer les dépendances Python
-pip install -r requirements.txt
-Compte Copernicus Marine
+- Open-Meteo Weather Best Match : meteo horaire sans cle API.
+- Open-Meteo Météo-France : AROME/ARPEGE via Open-Meteo, sans cle API.
+- Open-Meteo DWD ICON : modele allemand ICON via Open-Meteo, sans cle API.
+- Open-Meteo NOAA GFS : modele global GFS via Open-Meteo, sans cle API.
+- MET Norway Locationforecast : source meteo independante sans cle API, avec `User-Agent` obligatoire.
+- Open-Meteo Marine Best Match : vagues, houle, SST, courants et niveau marin sans cle API.
+- Open-Meteo Marine par modele : Météo-France Wave/Currents/SST, DWD EWAM/GWAM, NOAA GFS Wave.
+- Copernicus Marine / CMEMS : optionnel, gratuit avec identifiants `CMEMS_USERNAME` et `CMEMS_PASSWORD`.
 
-Certaines données utilisées par le pipeline nécessitent un compte Copernicus Marine.
+Meteo-France Marine et SHOM ne sont pas integres pour l'instant afin d'eviter les dependances a cle payante ou a conditions d'acces plus lourdes.
 
-Étapes :
+## Synchronisation
 
-créer un compte sur le portail Copernicus Marine
+Le job GitHub Actions `Environment Forecast Sync` lance :
 
-confirmer l’email
+```bash
+python -m pscripts.environment.sync_environment_forecasts
+```
 
-se connecter avec ses identifiants
+Variables utiles :
 
-Installer la CLI Copernicus
+```text
+VU2LAMER_SUPABASE_URL
+VU2LAMER_SUPABASE_SERVICE_KEY
+DATA2LAMER_SUPABASE_URL
+DATA2LAMER_SUPABASE_SERVICE_KEY
+FORECAST_DAYS=7
+FORECAST_TARGET_TIMEZONE=Europe/Paris
+OPEN_METEO_BATCH_SIZE=20
+APP_PROVENANCE_MODE=compact
+DATA2LAMER_STORE_SOURCE_VALUES=true
+ENABLE_CMEMS=true
+ENABLE_METNO=true
+CMEMS_USERNAME
+CMEMS_PASSWORD
+METNO_USER_AGENT
+```
 
-Si copernicusmarine est déjà présent dans requirements.txt, rien à faire de plus.
+## Alertes
 
-Sinon :
+Les alertes lisent maintenant `environment_forecasts` et evaluent les conditions heure par heure sur la date cible.
 
-pip install copernicusmarine
-
-Vérifier l’installation :
-
-copernicusmarine --version
-Se connecter à Copernicus
-copernicusmarine login
-Lancer le pipeline
-
-Depuis la racine du projet :
-
-python main.py
-Exécution script par script
-
-Si besoin, les scripts peuvent aussi être lancés individuellement :
-
-python scripts/01_build_target_zsd_pipeline.py
-python scripts/02_build_phy_pipeline.py
-python scripts/03_build_wav_pipeline.py
-python scripts/04_build_bgc_pipeline.py
-python scripts/05_build_meteo_pipeline.py
-python scripts/05b_build_static_pipeline.py
-python scripts/06_join_features.py
-python scripts/07_prepare_ml_dataset.py
-python scripts/08_train_baseline_model.py
-Données versionnées
-
-Le fichier suivant est volontairement conservé dans Git :
-
-data/config/spots_bretagne_mvp_50.csv
-
-Données non versionnées
-
-Les dossiers de sortie générés par le pipeline ne doivent pas être versionnés :
-
-data/raw/
-
-data/processed/
-
-data/models/
-
-data/reports/
-
-data/predictions/
+```bash
+python -m pscripts.check_alerts
+```
 
 ## Recuperation des reglementations
 
@@ -141,100 +107,7 @@ Le module `pscripts.regulations.build_regulations_feed` genere un fichier de reg
 ```bash
 python -m pscripts.regulations.discover_regulation_sources
 python -m pscripts.regulations.build_regulations_feed
-```
-
-Sorties generees:
-
-- `data/regulations/generated_source_candidates.json`: nouvelles pages/PDF officiels decouverts depuis les hubs et sitemaps.
-- `data/regulations/source_coverage_report.json`: couverture de decouverte par domaine officiel configure.
-- `data/regulations/generated_rules.json`: regles triees, dedoublonnees et pretes pour la synchro Supabase.
-- `data/regulations/quality_report.json`: rapport de coherence, doublons probables, conflits de metriques, attentes de couverture et sources a verifier.
-- `data/regulations/generated_rule_candidates.json`: candidats d'extraction avec statut, confiance, payload structure et audit IA eventuel.
-- `data/regulations/source_documents_manifest.json`: manifeste des documents sources, citations et chunks/preuves utilises par les regles.
-- `data/regulations/raw_documents/`: copie locale hashee des pages/PDF recuperes pour garder la preuve meme si l'URL change.
-
-Modele de donnees:
-
-- `reg_source_documents` conserve les documents sources hashes et le chemin de leur copie brute locale.
-- `reg_source_candidates` conserve les nouvelles sources detectees par les hubs/sitemaps et leur score de pertinence.
-- `reg_document_chunks` conserve les extraits/preuves.
-- `reg_rule_candidates` conserve les propositions brutes a trier.
-- `reg_rule_versions` conserve l'historique des versions observees pour chaque `rule_key`; une version courante non revue dans un run complet passe en `possibly_removed` sans suppression.
-- `reg_rule_citations` relie chaque regle a sa preuve.
-- `reg_species` et `reg_rule_species` normalisent les especes.
-- `reg_rules.status` distingue `needs_review`, `published` et les futurs statuts d'archivage.
-
-Pour synchroniser ces regles avec Supabase, creer d'abord les tables avec:
-
-```bash
-db/sql/2026-04-22_regulations_geospatial_tables.sql
-db/sql/2026-04-29_regulations_audit_model_v2.sql
-db/sql/2026-05-01_regulations_incremental_versions.sql
-```
-
-Puis lancer:
-
-```bash
 python -m pscripts.refresh_regulations_database
 ```
 
-Audit IA optionnel avec OpenAI:
-
-```powershell
-$env:REG_ENABLE_AI_AUDIT="true"
-$env:OPENAI_API_KEY="..."
-python -m pscripts.regulations.build_regulations_feed
-```
-
-Audit IA gratuit avec OpenRouter:
-
-```powershell
-$env:REG_ENABLE_AI_AUDIT="true"
-$env:REG_AI_API_KEY="..."
-$env:REG_AI_BASE_URL="https://openrouter.ai/api/v1"
-$env:REG_AI_MODEL="nvidia/nemotron-3-super-120b-a12b:free"
-python -m pscripts.regulations.build_regulations_feed
-```
-
-Audit IA gratuit en local avec Ollama:
-
-```powershell
-ollama pull llama3.1
-$env:REG_ENABLE_AI_AUDIT="true"
-$env:REG_AI_BASE_URL="http://localhost:11434/v1"
-$env:REG_AI_MODEL="llama3.1"
-python -m pscripts.regulations.build_regulations_feed
-```
-
-Variables utiles:
-
-- `REG_SOURCE_DISCOVERY_CONFIG_FILE`: configuration des hubs/sitemaps de decouverte, defaut `data/regulations/source_discovery_config.json`.
-- `REG_DISCOVERED_SOURCES_FILE`: candidats sources decouverts et acceptes par le build, defaut `data/regulations/generated_source_candidates.json`.
-- `REG_SOURCE_COVERAGE_REPORT_FILE`: rapport de couverture de la decouverte par domaine, defaut `data/regulations/source_coverage_report.json`.
-- `REG_QUALITY_EXPECTATIONS_FILE`: attentes minimales de couverture metier, defaut `data/regulations/quality_expectations.json`.
-- `REG_RAW_DOCUMENT_STORE_DIR`: repertoire des copies brutes hashees, defaut `data/regulations/raw_documents`.
-- `REG_DISCOVERY_ENABLE_AI_CLASSIFIER`: active le classement IA des sources candidates, defaut `false`.
-- `REG_LEGIFRANCE_FETCH_LIVE`: tente de lire Legifrance en direct, defaut `false`. Le site peut renvoyer `403`; le socle statique versionne est alors le chemin fiable.
-- `REG_INCREMENTAL_FETCH`: active le cache incremental des sources, defaut `true`.
-- `REG_SOURCE_FETCH_STATE_FILE`: fichier d'etat local des URLs deja vues, defaut `data/regulations/source_fetch_state.json`.
-- `REG_SOURCE_RECHECK_INTERVAL_HOURS`: delai minimal avant de recontroler une URL deja vue, defaut `20`.
-- `REG_FORCE_REFETCH`: force un retelechargement complet, defaut `false`.
-- `REG_MARK_MISSING_RULES`: marque les versions courantes non revues comme `possibly_removed`, defaut `true`.
-- `REG_AI_MODEL`: modele utilise pour l'audit IA, defaut `nvidia/nemotron-3-super-120b-a12b:free`.
-- `REG_AI_BASE_URL`: endpoint OpenAI-compatible, defaut `https://openrouter.ai/api/v1`. Les endpoints locaux (`localhost`, `127.0.0.1`) ne demandent pas de cle API.
-- `REG_AI_MAX_RULES`: nombre maximal de regles envoyees a l'audit IA, defaut `200`.
-- `REG_MAX_LINKED_HTML_PER_SOURCE`, `REG_MAX_PDF_LINKS_PER_PAGE`, `REG_MAX_DOCUMENTS_PER_SOURCE`: bornes de decouverte documentaire par source.
-- L'audit IA renseigne `confidence_score`, `confidence_source="ai"` et `confidence_reason` sur les regles auditees. Les regles avec un score IA inferieur a `0.65` repassent en revue manuelle.
-- Le pipeline extrait aussi `valid_from`, `valid_to`, `effective_date_source`, `effective_date_confidence`, `effective_date_quote` et `effective_date_reason`. L'IA peut proposer ces dates seulement avec un extrait exact retrouve dans le contexte source.
-- Les regles gardent `source_excerpt`, `source_context` et, si l'IA trouve mieux sans reformuler, `selected_quote`.
-- `REG_ENABLE_PDF_OCR`: active/desactive l'OCR des PDF peu lisibles, defaut `false`.
-
-OCR PDF optionnel:
-
-```powershell
-pip install pdf2image pytesseract
-$env:REG_ENABLE_PDF_OCR="true"
-python -m pscripts.regulations.build_regulations_feed
-```
-
-L'OCR necessite aussi les binaires systeme Poppler (`pdftoppm`) et Tesseract installes sur la machine.
+Le refresh ne materialise plus les associations reglementation -> spots/zones applicatifs. Les tables historiques volumineuses `reg_spot_assignments` et `reg_zone_assignments` peuvent etre supprimees avec `db/sql/2026-05-14_drop_regulation_app_assignments.sql`.

@@ -1,29 +1,24 @@
 name: Check Alerts & Notify
 
 on:
-  # Se lance après chaque run de forecast (les 3 runs quotidiens)
   workflow_run:
-    workflows: ["Forecast Predictions"]
+    workflows: ["Environment Forecast Sync"]
     types: [completed]
     branches: [main]
-  # Lancement manuel possible
   workflow_dispatch:
 
 jobs:
   check-alerts:
     runs-on: ubuntu-latest
-    # Ne lancer que si le forecast a réussi (ou si déclenché manuellement)
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY || secrets.SUPABASE_KEY }}
+      VU2LAMER_SUPABASE_URL: ${{ secrets.VU2LAMER_SUPABASE_URL }}
+      VU2LAMER_SUPABASE_SERVICE_KEY: ${{ secrets.VU2LAMER_SUPABASE_SERVICE_KEY }}
+      FORECAST_TARGET_TIMEZONE: Europe/Paris
 
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       RESEND_FROM_EMAIL: ${{ vars.RESEND_FROM_EMAIL || 'onboarding@resend.dev' }}
-
-      MODEL_VERSION: v1
-      MIN_DATA_COMPLETENESS: "0.5"
 
     steps:
       - name: Checkout repo

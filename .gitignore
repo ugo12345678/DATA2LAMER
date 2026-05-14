@@ -60,9 +60,11 @@ Thumbs.db
 # Ignore generated data folders
 data/raw/
 data/processed/
+data/config/
 data/models/
 data/reports/
 data/predictions/
+data/serving/
 data/regulations/generated_rules.json
 data/regulations/quality_report.json
 data/regulations/generated_rule_candidates.json
@@ -71,6 +73,7 @@ data/regulations/source_fetch_state.json
 data/regulations/generated_source_candidates.json
 data/regulations/source_coverage_report.json
 data/regulations/raw_documents/
+.tmp_reg_feed*/
 
 # Keep config/reference data
 !data/

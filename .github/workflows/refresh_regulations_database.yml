@@ -10,8 +10,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY || secrets.SUPABASE_KEY }}
+      VU2LAMER_SUPABASE_URL: ${{ secrets.VU2LAMER_SUPABASE_URL }}
+      VU2LAMER_SUPABASE_SERVICE_KEY: ${{ secrets.VU2LAMER_SUPABASE_SERVICE_KEY }}
 
       # Optionnels si ton schema differe
       REG_SPOTS_TABLE: ${{ vars.REG_SPOTS_TABLE || 'spots' }}

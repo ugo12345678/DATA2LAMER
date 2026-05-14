@@ -1,0 +1,49 @@
+name: Environment Forecast Sync
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  forecast-job:
+    runs-on: ubuntu-latest
+
+    env:
+      VU2LAMER_SUPABASE_URL: ${{ secrets.VU2LAMER_SUPABASE_URL }}
+      VU2LAMER_SUPABASE_SERVICE_KEY: ${{ secrets.VU2LAMER_SUPABASE_SERVICE_KEY }}
+
+      DATA2LAMER_SUPABASE_URL: ${{ secrets.DATA2LAMER_SUPABASE_URL }}
+      DATA2LAMER_SUPABASE_SERVICE_KEY: ${{ secrets.DATA2LAMER_SUPABASE_SERVICE_KEY }}
+
+      CMEMS_USERNAME: ${{ secrets.CMEMS_USERNAME }}
+      CMEMS_PASSWORD: ${{ secrets.CMEMS_PASSWORD }}
+
+      FORECAST_DAYS: 7
+      FORECAST_TARGET_TIMEZONE: Europe/Paris
+      OPEN_METEO_BATCH_SIZE: 20
+      APP_PROVENANCE_MODE: compact
+      DATA2LAMER_STORE_SOURCE_VALUES: true
+      FORECAST_THREAD_WORKERS: 4
+      CMEMS_MAX_WORKERS: 6
+      SPOT_MARGIN_DEG: 0.03
+      ENABLE_CMEMS: true
+      ENABLE_METNO: true
+      METNO_USER_AGENT: ${{ vars.METNO_USER_AGENT || 'DATA2LAMER/1.0 github-actions' }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-forecast.txt
+
+      - name: Sync hourly environment forecasts
+        run: python -m pscripts.environment.sync_environment_forecasts

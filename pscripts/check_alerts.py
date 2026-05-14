@@ -1,25 +1,29 @@
 """
-Évalue les alertes actives contre les prédictions forecast en base,
-puis envoie un email aux utilisateurs concernés via Resend.
+Evaluate active alerts against consolidated hourly weather/marine forecasts.
+
+Observed visibility is still collected from dive outings; this script only evaluates
+forecastable environmental conditions.
 """
 from __future__ import annotations
 
 import json
 import os
+import unicodedata
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import requests as http_requests
 
-from pscripts.supabase_client import get_supabase
+from pscripts.supabase_client import get_vu2lamer_supabase
+
 
 RESEND_API_KEY = os.environ["RESEND_API_KEY"]
 RESEND_FROM_EMAIL = os.environ.get("RESEND_FROM_EMAIL", "onboarding@resend.dev")
-MODEL_VERSION = os.environ.get("MODEL_VERSION", "v1")
-MIN_DATA_COMPLETENESS = float(os.environ.get("MIN_DATA_COMPLETENESS", "0.5"))
 
+FORECAST_TABLE = os.environ.get("VU2LAMER_FORECAST_TABLE", "environment_forecasts")
+FORECAST_TARGET_TIMEZONE = os.environ.get("FORECAST_TARGET_TIMEZONE", "Europe/Paris")
 
-# ─── Opérateurs de comparaison ───────────────────────────────────────────────
 
 OPERATORS = {
     ">": lambda val, thr: val > thr,
@@ -31,37 +35,101 @@ OPERATORS = {
     "!=": lambda val, thr: val != thr,
 }
 
-
-# ─── Mapping condition_type.label → champ forecast ──────────────────────────
-
 CONDITION_FIELD_MAP = {
-    # Visibilité (prédiction principale)
-    "visibilité": "pred_visibility",
-    "visibility": "pred_visibility",
-    # Température de l'eau (SST)
-    "température de l'eau": "sst",
-    "water_temperature": "sst",
-    # Température de l'air
-    "température de l'air": "temperature_2m",
-    "air_temperature": "temperature_2m",
-    # Hauteur des vagues
-    "hauteur des vagues": "wave_height",
-    "wave_height": "wave_height",
-    # Vitesse du vent
-    "vitesse du vent": "wind_speed",
-    "wind_speed": "wind_speed",
+    "temperature de l'eau": "water_temperature_c",
+    "water_temperature": "water_temperature_c",
+    "temperature de l'air": "air_temperature_c",
+    "air_temperature": "air_temperature_c",
+    "humidite": "relative_humidity_pct",
+    "relative_humidity": "relative_humidity_pct",
+    "point de rosee": "dew_point_c",
+    "dew_point": "dew_point_c",
+    "hauteur des vagues": "wave_height_m",
+    "wave_height": "wave_height_m",
+    "periode des vagues": "wave_period_s",
+    "wave_period": "wave_period_s",
+    "houle": "swell_wave_height_m",
+    "swell_wave_height": "swell_wave_height_m",
+    "periode de houle": "swell_wave_period_s",
+    "swell_wave_period": "swell_wave_period_s",
+    "vitesse du vent": "wind_speed_ms",
+    "wind_speed": "wind_speed_ms",
+    "rafales de vent": "wind_gusts_ms",
+    "wind_gusts": "wind_gusts_ms",
+    "precipitations": "precipitation_mm",
+    "precipitation": "precipitation_mm",
+    "couverture nuageuse": "cloud_cover_pct",
+    "cloud_cover": "cloud_cover_pct",
+    "nuages bas": "cloud_cover_low_pct",
+    "cloud_cover_low": "cloud_cover_low_pct",
+    "nuages moyens": "cloud_cover_mid_pct",
+    "cloud_cover_mid": "cloud_cover_mid_pct",
+    "nuages hauts": "cloud_cover_high_pct",
+    "cloud_cover_high": "cloud_cover_high_pct",
+    "pression": "pressure_msl_hpa",
+    "pressure": "pressure_msl_hpa",
+    "visibilite meteo": "weather_visibility_m",
+    "weather_visibility": "weather_visibility_m",
+    "maree": "sea_level_height_m",
+    "sea_level": "sea_level_height_m",
+    "courant": "current_speed_ms",
+    "current_speed": "current_speed_ms",
+    "salinite": "salinity_psu",
+    "salinity": "salinity_psu",
+    "chlorophylle": "chlorophyll_mg_m3",
+    "chlorophyll": "chlorophyll_mg_m3",
 }
 
+FORECAST_SELECT_COLUMNS = [
+    "spot_id",
+    "target_date",
+    "valid_time",
+    "forecast_run_at",
+    "sources",
+    "wind_speed_ms",
+    "wind_gusts_ms",
+    "wind_direction_deg",
+    "air_temperature_c",
+    "relative_humidity_pct",
+    "dew_point_c",
+    "pressure_msl_hpa",
+    "surface_pressure_hpa",
+    "cloud_cover_pct",
+    "cloud_cover_low_pct",
+    "cloud_cover_mid_pct",
+    "cloud_cover_high_pct",
+    "precipitation_mm",
+    "weather_visibility_m",
+    "wave_height_m",
+    "wave_period_s",
+    "wave_direction_deg",
+    "swell_wave_height_m",
+    "swell_wave_period_s",
+    "swell_wave_direction_deg",
+    "water_temperature_c",
+    "sea_level_height_m",
+    "current_speed_ms",
+    "current_direction_deg",
+    "salinity_psu",
+    "chlorophyll_mg_m3",
+    "light_attenuation_m1",
+]
 
-# ─── Chargement des données ──────────────────────────────────────────────────
+
+def normalize_label(label: str) -> str:
+    normalized = unicodedata.normalize("NFKD", label)
+    without_accents = "".join(c for c in normalized if not unicodedata.combining(c))
+    return without_accents.lower().strip()
+
+
+def client():
+    return get_vu2lamer_supabase()
 
 
 def load_active_alerts() -> list[dict]:
-    """Charge les alertes actives avec conditions, spots et profil utilisateur."""
-    client = get_supabase()
-
-    alerts_resp = (
-        client.table("alerts")
+    resp = (
+        client()
+        .table("alerts")
         .select(
             "id, user_id, name, description, notification_type, forecast_day, "
             "alert_conditions(id, condition_type_id, operator, threshold_value), "
@@ -70,42 +138,28 @@ def load_active_alerts() -> list[dict]:
         .eq("is_active", True)
         .execute()
     )
-    return alerts_resp.data or []
+    return resp.data or []
 
 
 def load_condition_types() -> dict[str, dict]:
-    """Retourne un dict {id: {label, unit, ...}} pour les condition_types."""
-    client = get_supabase()
-    resp = client.table("condition_types").select("id, label, description, unit").execute()
+    resp = client().table("condition_types").select("id, label, description, unit").execute()
     return {row["id"]: row for row in (resp.data or [])}
 
 
 def load_user_emails(user_ids: list[str]) -> dict[str, str]:
-    """Charge les emails depuis auth.users via une RPC ou la table profiles."""
     if not user_ids:
         return {}
 
-    client = get_supabase()
-
-    # Essayer via une RPC Supabase pour récupérer les emails
-    # (les emails sont dans auth.users, pas directement accessible en client-side,
-    #  donc on utilise une fonction RPC côté Supabase)
+    db = client()
     try:
-        resp = client.rpc("get_user_emails", {"user_ids": user_ids}).execute()
+        resp = db.rpc("get_user_emails", {"user_ids": user_ids}).execute()
         if resp.data:
             return {row["id"]: row["email"] for row in resp.data}
     except Exception:
         pass
 
-    # Fallback : utiliser la vue profiles si elle contient l'email
-    # ou le service_role key qui a accès à auth.users
     try:
-        resp = (
-            client.table("profiles")
-            .select("id, email")
-            .in_("id", user_ids)
-            .execute()
-        )
+        resp = db.table("profiles").select("id, email").in_("id", user_ids).execute()
         if resp.data:
             return {row["id"]: row["email"] for row in resp.data if row.get("email")}
     except Exception:
@@ -115,163 +169,136 @@ def load_user_emails(user_ids: list[str]) -> dict[str, str]:
 
 
 def load_forecasts_for_spots(spot_ids: list, target_date: str) -> list[dict]:
-    """Charge les prédictions forecast pour des spots à une date cible."""
-    client = get_supabase()
     resp = (
-        client.table("forecast_predictions")
-        .select("spot_id, target_time, pred_visibility, data_completeness, features_json")
+        client()
+        .table(FORECAST_TABLE)
+        .select(",".join(FORECAST_SELECT_COLUMNS))
         .in_("spot_id", spot_ids)
-        .eq("model_version", MODEL_VERSION)
-        .gte("data_completeness", MIN_DATA_COMPLETENESS)
-        .gte("target_time", f"{target_date}T00:00:00+00:00")
-        .lt("target_time", f"{target_date}T23:59:59+00:00")
+        .eq("target_date", target_date)
         .execute()
     )
     return resp.data or []
 
 
-# ─── Évaluation des conditions ───────────────────────────────────────────────
+def group_forecasts_by_spot(forecasts: list[dict]) -> dict[str, list[dict]]:
+    grouped: dict[str, list[dict]] = {}
+    for forecast in forecasts:
+        grouped.setdefault(forecast["spot_id"], []).append(forecast)
+    for rows in grouped.values():
+        rows.sort(key=lambda item: item.get("valid_time") or "")
+    return grouped
 
 
-def get_forecast_value(prediction: dict, field: str) -> float | None:
-    """Extrait une valeur du forecast (soit colonne directe, soit dans features_json)."""
-    # Champs directs sur la row
-    if field in prediction and prediction[field] is not None:
-        try:
-            return float(prediction[field])
-        except (ValueError, TypeError):
-            return None
-
-    # Sinon chercher dans features_json
-    features = prediction.get("features_json")
-    if isinstance(features, dict) and field in features:
-        val = features[field]
-        if val is not None:
-            try:
-                return float(val)
-            except (ValueError, TypeError):
-                return None
-
-    return None
-
-
-def evaluate_condition(
-    prediction: dict,
-    condition: dict,
-    condition_types: dict[str, dict],
-) -> bool | None:
-    """
-    Évalue une condition contre un forecast.
-    Retourne True (condition remplie), False, ou None (donnée manquante).
-    """
-    ctype = condition_types.get(condition["condition_type_id"])
-    if not ctype:
-        print(f"  [WARN] condition_type_id inconnu: {condition['condition_type_id']}")
+def get_forecast_value(forecast: dict, field: str) -> float | None:
+    if forecast.get(field) is None:
+        return None
+    try:
+        return float(forecast[field])
+    except (ValueError, TypeError):
         return None
 
-    label = ctype["label"].lower().strip()
+
+def evaluate_condition(forecast: dict, condition: dict, condition_types: dict[str, dict]) -> bool | None:
+    ctype = condition_types.get(condition["condition_type_id"])
+    if not ctype:
+        print(f"  [WARN] unknown condition_type_id: {condition['condition_type_id']}")
+        return None
+
+    label = normalize_label(ctype["label"])
     field = CONDITION_FIELD_MAP.get(label)
     if not field:
-        print(f"  [WARN] label condition non mappé: '{label}'")
+        print(f"  [WARN] condition not mapped to hourly forecasts: '{label}'")
         return None
 
     operator_fn = OPERATORS.get(condition["operator"])
     if not operator_fn:
-        print(f"  [WARN] opérateur inconnu: '{condition['operator']}'")
+        print(f"  [WARN] unknown operator: '{condition['operator']}'")
         return None
 
-    value = get_forecast_value(prediction, field)
+    value = get_forecast_value(forecast, field)
     if value is None:
         return None
 
-    threshold = float(condition["threshold_value"])
-    return operator_fn(value, threshold)
+    return operator_fn(value, float(condition["threshold_value"]))
 
 
 def evaluate_alert(
     alert: dict,
     condition_types: dict[str, dict],
-    forecasts_by_spot: dict[str, dict],
+    forecasts_by_spot: dict[str, list[dict]],
 ) -> list[dict]:
-    """
-    Évalue une alerte sur tous ses spots.
-    Retourne la liste des spots déclenchés avec les détails.
-    """
     conditions = alert.get("alert_conditions") or []
     if not conditions:
         return []
 
     triggered_spots = []
-
-    for alert_spot in (alert.get("alert_spots") or []):
+    for alert_spot in alert.get("alert_spots") or []:
         spot_id = alert_spot["spot_id"]
-        prediction = forecasts_by_spot.get(spot_id)
-        if not prediction:
-            continue
+        forecasts = forecasts_by_spot.get(spot_id, [])
 
-        results = []
-        for cond in conditions:
-            result = evaluate_condition(prediction, cond, condition_types)
-            results.append(result)
-
-        # Toutes les conditions doivent être remplies (AND logic)
-        if all(r is True for r in results):
-            triggered_spots.append({
-                "spot_id": spot_id,
-                "prediction": prediction,
-            })
+        for forecast in forecasts:
+            results = [evaluate_condition(forecast, cond, condition_types) for cond in conditions]
+            if all(result is True for result in results):
+                triggered_spots.append({"spot_id": spot_id, "forecast": forecast})
+                break
 
     return triggered_spots
 
 
-# ─── Envoi d'emails ──────────────────────────────────────────────────────────
+def format_number(value, suffix: str = "") -> str:
+    if value is None:
+        return "N/A"
+    try:
+        return f"{float(value):.1f}{suffix}"
+    except (TypeError, ValueError):
+        return "N/A"
 
 
 def format_alert_email(alert: dict, triggered: list[dict], condition_types: dict) -> tuple[str, str]:
-    """Génère le sujet et le corps HTML de l'email."""
-    subject = f"🌊 Alerte DATA2LAMER : {alert['name']}"
+    subject = f"Alerte DATA2LAMER : {alert['name']}"
 
     spots_html = ""
-    for t in triggered:
-        pred = t["prediction"]
-        visibility = pred.get("pred_visibility")
-        completeness = pred.get("data_completeness", 0)
-        vis_text = f"{visibility:.1f} m" if visibility is not None else "N/A"
+    for item in triggered:
+        forecast = item["forecast"]
+        sources = ", ".join(forecast.get("sources") or [])
         spots_html += f"""
         <tr>
-            <td style="padding:8px;border:1px solid #ddd;">{t['spot_id']}</td>
-            <td style="padding:8px;border:1px solid #ddd;">{vis_text}</td>
-            <td style="padding:8px;border:1px solid #ddd;">{completeness:.0%}</td>
+            <td style="padding:8px;border:1px solid #ddd;">{item['spot_id']}</td>
+            <td style="padding:8px;border:1px solid #ddd;">{forecast.get('valid_time', 'N/A')}</td>
+            <td style="padding:8px;border:1px solid #ddd;">{format_number(forecast.get('air_temperature_c'), ' degC')}</td>
+            <td style="padding:8px;border:1px solid #ddd;">{format_number(forecast.get('wave_height_m'), ' m')}</td>
+            <td style="padding:8px;border:1px solid #ddd;">{format_number(forecast.get('wind_speed_ms'), ' m/s')}</td>
+            <td style="padding:8px;border:1px solid #ddd;">{sources}</td>
         </tr>"""
 
     conditions_html = ""
-    for cond in (alert.get("alert_conditions") or []):
+    for cond in alert.get("alert_conditions") or []:
         ctype = condition_types.get(cond["condition_type_id"], {})
         label = ctype.get("label", "?")
         unit = ctype.get("unit", "")
         conditions_html += f"<li>{label} {cond['operator']} {cond['threshold_value']} {unit}</li>"
 
     html = f"""
-    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-        <h2 style="color:#1a56db;">🌊 Alerte : {alert['name']}</h2>
+    <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;">
+        <h2 style="color:#1a56db;">Alerte : {alert['name']}</h2>
         <p>{alert.get('description') or ''}</p>
-
-        <h3>Conditions déclenchées</h3>
+        <h3>Conditions declenchees</h3>
         <ul>{conditions_html}</ul>
-
-        <h3>Spots concernés</h3>
+        <h3>Spots concernes</h3>
         <table style="border-collapse:collapse;width:100%;">
             <tr style="background:#f0f0f0;">
                 <th style="padding:8px;border:1px solid #ddd;">Spot</th>
-                <th style="padding:8px;border:1px solid #ddd;">Visibilité prédite</th>
-                <th style="padding:8px;border:1px solid #ddd;">Fiabilité données</th>
+                <th style="padding:8px;border:1px solid #ddd;">Heure UTC</th>
+                <th style="padding:8px;border:1px solid #ddd;">Air</th>
+                <th style="padding:8px;border:1px solid #ddd;">Vagues</th>
+                <th style="padding:8px;border:1px solid #ddd;">Vent</th>
+                <th style="padding:8px;border:1px solid #ddd;">Sources</th>
             </tr>
             {spots_html}
         </table>
-
         <p style="margin-top:20px;color:#666;font-size:12px;">
-            Prévision pour J+{alert.get('forecast_day', '?')} —
-            Généré le {datetime.now(timezone.utc).strftime('%d/%m/%Y à %Hh%M UTC')}
+            Prevision horaire pour J+{alert.get('forecast_day', '?')} -
+            Genere le {datetime.now(timezone.utc).strftime('%d/%m/%Y a %Hh%M UTC')}
         </p>
     </div>
     """
@@ -279,7 +306,6 @@ def format_alert_email(alert: dict, triggered: list[dict], condition_types: dict
 
 
 def send_email(to_email: str, subject: str, html_body: str) -> bool:
-    """Envoie un email via l'API Resend."""
     resp = http_requests.post(
         "https://api.resend.com/emails",
         headers={
@@ -294,38 +320,37 @@ def send_email(to_email: str, subject: str, html_body: str) -> bool:
         },
         timeout=30,
     )
-
     if resp.status_code in (200, 201):
-        print(f"  [OK] Email envoyé à {to_email}")
+        print(f"  [OK] Email sent to {to_email}")
         return True
-    else:
-        print(f"  [ERROR] Échec envoi email à {to_email}: {resp.status_code} {resp.text}")
-        return False
+
+    print(f"  [ERROR] Email failed for {to_email}: {resp.status_code} {resp.text}")
+    return False
 
 
 def log_alert_notification(alert_id: str, notification_type: str, sent: bool) -> None:
-    """Enregistre la notification envoyée dans alert_notifications."""
-    client = get_supabase()
     try:
-        client.table("alert_notifications").insert({
-            "alert_id": alert_id,
-            "notification_type": notification_type,
-            "sent_at": datetime.now(timezone.utc).isoformat(),
-            "status": "sent" if sent else "failed",
-        }).execute()
+        client().table("alert_notifications").insert(
+            {
+                "alert_id": alert_id,
+                "notification_type": notification_type,
+                "sent_at": datetime.now(timezone.utc).isoformat(),
+                "status": "sent" if sent else "failed",
+            }
+        ).execute()
     except Exception as exc:
-        print(f"  [WARN] Échec log notification: {exc}")
+        print(f"  [WARN] notification log failed: {exc}")
 
 
 def already_notified_today(alert_ids: list[str]) -> set[str]:
-    """Retourne les alert_id qui ont déjà reçu une notification email aujourd'hui."""
     if not alert_ids:
         return set()
-    client = get_supabase()
+
     today_start = datetime.now(timezone.utc).strftime("%Y-%m-%d") + "T00:00:00+00:00"
     try:
         resp = (
-            client.table("alert_notifications")
+            client()
+            .table("alert_notifications")
             .select("alert_id")
             .in_("alert_id", alert_ids)
             .eq("notification_type", "email")
@@ -335,99 +360,54 @@ def already_notified_today(alert_ids: list[str]) -> set[str]:
         )
         return {row["alert_id"] for row in (resp.data or [])}
     except Exception as exc:
-        print(f"[WARN] Échec vérification notifications existantes: {exc}")
+        print(f"[WARN] existing notification lookup failed: {exc}")
         return set()
 
 
-# ─── Main ────────────────────────────────────────────────────────────────────
-
-
 def main() -> None:
-    print("=== CHECK ALERTS ===")
+    print("=== CHECK HOURLY FORECAST ALERTS ===")
 
     alerts = load_active_alerts()
-    print(f"Alertes actives: {len(alerts)}")
+    print(f"Active alerts: {len(alerts)}")
     if not alerts:
-        print("Aucune alerte active. Fin.")
         return
 
     condition_types = load_condition_types()
-    print(f"Types de conditions: {len(condition_types)}")
-
-    # Collecter tous les user_ids et spot_ids nécessaires
-    all_user_ids = list({a["user_id"] for a in alerts if a.get("user_id")})
-    all_spot_ids = list({
-        s["spot_id"]
-        for a in alerts
-        for s in (a.get("alert_spots") or [])
-    })
-
-    print(f"Utilisateurs concernés: {len(all_user_ids)}")
-    print(f"Spots à vérifier: {len(all_spot_ids)}")
-
-    user_emails = load_user_emails(all_user_ids)
-    print(f"Emails récupérés: {len(user_emails)}")
-
-    # Vérifier quelles alertes ont déjà été notifiées aujourd'hui
-    all_alert_ids = [a["id"] for a in alerts]
+    all_user_ids = list({alert["user_id"] for alert in alerts if alert.get("user_id")})
+    all_alert_ids = [alert["id"] for alert in alerts]
     notified_today = already_notified_today(all_alert_ids)
-    if notified_today:
-        print(f"Alertes déjà notifiées aujourd'hui (skip): {len(notified_today)}")
+    user_emails = load_user_emails(all_user_ids)
 
-    # Évaluer chaque alerte
     emails_sent = 0
     alerts_triggered = 0
     skipped_already_sent = 0
 
     for alert in alerts:
         alert_name = alert.get("name", alert["id"])
-
         if alert["id"] in notified_today:
             skipped_already_sent += 1
-            print(f"[{alert_name}] Déjà notifié aujourd'hui, skip.")
+            print(f"[{alert_name}] already notified today, skipped.")
             continue
+
         forecast_day = alert.get("forecast_day") or 0
-        target_date = (
-            datetime.now(timezone.utc) + timedelta(days=forecast_day)
-        ).strftime("%Y-%m-%d")
-
-        spot_ids = [s["spot_id"] for s in (alert.get("alert_spots") or [])]
+        target_tz = ZoneInfo(FORECAST_TARGET_TIMEZONE)
+        target_date = (datetime.now(target_tz) + timedelta(days=forecast_day)).strftime("%Y-%m-%d")
+        spot_ids = [item["spot_id"] for item in alert.get("alert_spots") or []]
         if not spot_ids:
-            print(f"[{alert_name}] Aucun spot associé, skip.")
+            print(f"[{alert_name}] no spots, skipped.")
             continue
-
-        print(f"\n[{alert_name}] forecast_day=J+{forecast_day} ({target_date}), "
-              f"{len(spot_ids)} spot(s), {len(alert.get('alert_conditions') or [])} condition(s)")
 
         forecasts = load_forecasts_for_spots(spot_ids, target_date)
-        if not forecasts:
-            print(f"  Aucune prédiction trouvée pour {target_date}")
-            continue
-
-        # Dédupliquer : garder la meilleure completeness par spot
-        forecasts_by_spot: dict[str, dict] = {}
-        for f in forecasts:
-            sid = f["spot_id"]
-            if sid not in forecasts_by_spot or (
-                (f.get("data_completeness") or 0) > (forecasts_by_spot[sid].get("data_completeness") or 0)
-            ):
-                forecasts_by_spot[sid] = f
-
-        print(f"  Prédictions disponibles: {len(forecasts_by_spot)} spot(s)")
+        forecasts_by_spot = group_forecasts_by_spot(forecasts)
+        print(f"[{alert_name}] {len(forecasts)} hourly forecasts for {target_date}")
 
         triggered = evaluate_alert(alert, condition_types, forecasts_by_spot)
         if not triggered:
-            print(f"  Aucun spot ne déclenche l'alerte.")
             continue
 
         alerts_triggered += 1
-        triggered_spot_ids = [t["spot_id"] for t in triggered]
-        print(f"  ALERTE DÉCLENCHÉE sur {len(triggered)} spot(s): {triggered_spot_ids}")
-
-        # Envoyer l'email
         user_email = user_emails.get(alert["user_id"])
         if not user_email:
-            print(f"  [WARN] Pas d'email trouvé pour user {alert['user_id']}")
             log_alert_notification(alert["id"], "email", sent=False)
             continue
 
@@ -437,24 +417,18 @@ def main() -> None:
             emails_sent += 1
         log_alert_notification(alert["id"], "email", sent=sent)
 
-    print(f"\n=== RÉSUMÉ: {alerts_triggered} déclenchée(s), {emails_sent} email(s), {skipped_already_sent} ignorée(s) (déjà envoyé) ===")
-
-    # Générer le rapport JSON pour l'artefact GitHub Actions
     report = {
         "run_date": datetime.now(timezone.utc).isoformat(),
         "alerts_active": len(alerts),
         "alerts_triggered": alerts_triggered,
         "emails_sent": emails_sent,
         "skipped_already_sent": skipped_already_sent,
-        "users_concerned": len(all_user_ids),
-        "spots_checked": len(all_spot_ids),
     }
-
     report_dir = Path("artifacts")
     report_dir.mkdir(exist_ok=True)
     report_path = report_dir / "alert_report.json"
-    report_path.write_text(json.dumps(report, indent=2, ensure_ascii=False))
-    print(f"Rapport sauvegardé: {report_path}")
+    report_path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(json.dumps(report, indent=2))
 
 
 if __name__ == "__main__":

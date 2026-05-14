@@ -281,7 +281,6 @@ def to_spot_items(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             {
                 "id": str(entity_id),
                 "name": row.get("name"),
-                "zone_id": str(row.get("zone_id")) if row.get("zone_id") else None,
                 "bbox": bbox,
             }
         )
@@ -892,124 +891,6 @@ def sync_rule_species(client, seed_rule: dict[str, Any], rule_id: str, timestamp
     return count
 
 
-def sync_zone_assignments(
-    client,
-    zone_items: list[dict[str, Any]],
-    rule_row: dict[str, Any],
-    reg_zone_row: dict[str, Any],
-    source_url: str,
-    source_priority: int,
-    timestamp_iso: str,
-    needs_manual_review: bool,
-) -> set[str]:
-    rule_bbox = normalize_bbox(
-        float(reg_zone_row["lat_min"]),
-        float(reg_zone_row["lat_max"]),
-        float(reg_zone_row["lon_min"]),
-        float(reg_zone_row["lon_max"]),
-    )
-
-    matched_zone_ids: set[str] = set()
-    payload: list[dict[str, Any]] = []
-
-    for item in zone_items:
-        if bbox_overlap(item["bbox"], rule_bbox):
-            zone_id = item["id"]
-            matched_zone_ids.add(zone_id)
-            payload.append(
-                {
-                    "app_zone_id": zone_id,
-                    "rule_id": rule_row["id"],
-                    "reg_zone_id": reg_zone_row["id"],
-                    "source_url": source_url,
-                    "source_priority": source_priority,
-                    "match_type": "bbox_overlap",
-                    "assigned_at": timestamp_iso,
-                    "checked_at": timestamp_iso,
-                    "fetched_at": timestamp_iso,
-                    "needs_manual_review": needs_manual_review,
-                    "metadata": {
-                        "zone_name": item.get("name")
-                    },
-                    "updated_at": timestamp_iso,
-                }
-            )
-
-    if payload:
-        client.table("reg_zone_assignments").upsert(payload, on_conflict="app_zone_id,rule_id").execute()
-
-    existing = client.table("reg_zone_assignments").select("id,app_zone_id").eq("rule_id", rule_row["id"]).limit(ROW_FETCH_LIMIT).execute()
-    to_delete = [r["id"] for r in (existing.data or []) if str(r.get("app_zone_id")) not in matched_zone_ids]
-    if to_delete:
-        client.table("reg_zone_assignments").delete().in_("id", to_delete).execute()
-
-    return matched_zone_ids
-
-
-def sync_spot_assignments(
-    client,
-    spot_items: list[dict[str, Any]],
-    matched_zone_ids: set[str],
-    rule_row: dict[str, Any],
-    reg_zone_row: dict[str, Any],
-    source_url: str,
-    source_priority: int,
-    timestamp_iso: str,
-    needs_manual_review: bool,
-) -> int:
-    rule_bbox = normalize_bbox(
-        float(reg_zone_row["lat_min"]),
-        float(reg_zone_row["lat_max"]),
-        float(reg_zone_row["lon_min"]),
-        float(reg_zone_row["lon_max"]),
-    )
-
-    matched_spot_ids: list[str] = []
-    payload: list[dict[str, Any]] = []
-
-    for spot in spot_items:
-        spot_id = spot["id"]
-        zone_id = spot.get("zone_id")
-
-        if zone_id and zone_id in matched_zone_ids:
-            match_type = "zone_id_link"
-        elif bbox_overlap(spot["bbox"], rule_bbox):
-            match_type = "bbox_overlap"
-        else:
-            continue
-
-        matched_spot_ids.append(spot_id)
-        payload.append(
-            {
-                "spot_id": spot_id,
-                "rule_id": rule_row["id"],
-                "reg_zone_id": reg_zone_row["id"],
-                "app_zone_id": zone_id,
-                "source_url": source_url,
-                "source_priority": source_priority,
-                "match_type": match_type,
-                "assigned_at": timestamp_iso,
-                "checked_at": timestamp_iso,
-                "fetched_at": timestamp_iso,
-                "needs_manual_review": needs_manual_review,
-                "metadata": {
-                    "spot_name": spot.get("name")
-                },
-                "updated_at": timestamp_iso,
-            }
-        )
-
-    if payload:
-        client.table("reg_spot_assignments").upsert(payload, on_conflict="spot_id,rule_id").execute()
-
-    existing = client.table("reg_spot_assignments").select("id,spot_id").eq("rule_id", rule_row["id"]).limit(ROW_FETCH_LIMIT).execute()
-    to_delete = [r["id"] for r in (existing.data or []) if str(r.get("spot_id")) not in matched_spot_ids]
-    if to_delete:
-        client.table("reg_spot_assignments").delete().in_("id", to_delete).execute()
-
-    return len(payload)
-
-
 def create_run(client, started_at: str, metadata: dict[str, Any]) -> str:
     response = client.table("reg_assignment_runs").insert({"status": "RUNNING", "started_at": started_at, "metadata": metadata}).execute()
     rows = response.data or []
@@ -1038,6 +919,7 @@ def main() -> None:
         "audit_model_enabled": ENABLE_AUDIT_MODEL,
         "rule_versioning_enabled": ENABLE_RULE_VERSIONING,
         "mark_missing_rules_enabled": MARK_MISSING_RULES,
+        "materialized_app_assignments_enabled": False,
     }
 
     run_id = create_run(client, started_at, metadata)
@@ -1082,8 +964,6 @@ def main() -> None:
         timestamp_iso = now_utc_iso()
         source_candidate_count = upsert_source_candidates(client, source_candidates, timestamp_iso)
         rules_count = 0
-        spot_assignments_count = 0
-        zone_assignments_count = 0
         citation_count = 0
         species_link_count = 0
         seen_rule_keys: set[str] = set()
@@ -1132,39 +1012,10 @@ def main() -> None:
             rule_bbox = resolve_rule_zone_bbox(seed_rule, spots_envelope, zones_envelope)
             reg_zone_row = upsert_rule_zone(client, seed_rule, str(rule_row["id"]), rule_bbox, timestamp_iso)
 
-            matched_zone_ids: set[str] = set()
-            if zone_items:
-                matched_zone_ids = sync_zone_assignments(
-                    client,
-                    zone_items,
-                    rule_row,
-                    reg_zone_row,
-                    str(source_row["source_url"]),
-                    int(source_row["source_priority"]),
-                    timestamp_iso,
-                    bool(seed_rule.get("needs_manual_review", False)),
-                )
-
-            assigned_spots = sync_spot_assignments(
-                client,
-                spot_items,
-                matched_zone_ids,
-                rule_row,
-                reg_zone_row,
-                str(source_row["source_url"]),
-                int(source_row["source_priority"]),
-                timestamp_iso,
-                bool(seed_rule.get("needs_manual_review", False)),
-            )
-
             rules_count += 1
             seen_rule_keys.add(str(seed_rule["rule_key"]))
-            spot_assignments_count += assigned_spots
-            zone_assignments_count += len(matched_zone_ids)
 
-            print(
-                f"[OK] rule={seed_rule['rule_key']} zones={len(matched_zone_ids)} spots={assigned_spots} reg_zone={reg_zone_row['zone_code']}"
-            )
+            print(f"[OK] rule={seed_rule['rule_key']} reg_zone={reg_zone_row['zone_code']}")
 
         missing_rule_version_count = 0
         if ENABLE_RULE_VERSIONING and MARK_MISSING_RULES:
@@ -1186,8 +1037,8 @@ def main() -> None:
                 "spots_count": len(spot_items),
                 "zones_count": len(zone_items),
                 "rules_count": rules_count,
-                "spot_assignments_count": spot_assignments_count,
-                "zone_assignments_count": zone_assignments_count,
+                "spot_assignments_count": 0,
+                "zone_assignments_count": 0,
                 "warning_count": warning_count,
                 "metadata": {
                     **metadata,

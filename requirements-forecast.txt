@@ -1,7 +1,3 @@
-boto3
-joblib
-lightgbm
-scikit-learn==1.7.2
 copernicusmarine
 xarray
 netCDF4

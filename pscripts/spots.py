@@ -1,26 +1,27 @@
 from __future__ import annotations
 
-from pathlib import Path
+import os
 
 import pandas as pd
 
-from pscripts.supabase_client import get_supabase
+from pscripts.supabase_client import get_vu2lamer_supabase
+
+
+SPOTS_TABLE = os.environ.get("SPOTS_TABLE", "spots")
 
 
 def load_spots() -> pd.DataFrame:
-    client = get_supabase()
+    client = get_vu2lamer_supabase()
 
     response = (
-        client.table("spots")
-        .select(
-            "id,name,latitude_min,latitude_max,longitude_min,longitude_max,type_fond,profondeur_moyenne"
-        )
+        client.table(SPOTS_TABLE)
+        .select("id,name,latitude_min,latitude_max,longitude_min,longitude_max")
         .execute()
     )
 
     rows = response.data or []
     if not rows:
-        raise ValueError("Aucune spots trouvée dans Supabase.")
+        raise ValueError(f"Aucun spot trouve dans Supabase ({SPOTS_TABLE}).")
 
     df = pd.DataFrame(rows)
 
@@ -34,7 +35,7 @@ def load_spots() -> pd.DataFrame:
     ]
     missing = [c for c in required_cols if c not in df.columns]
     if missing:
-        raise ValueError(f"Colonnes manquantes dans la table spots: {missing}")
+        raise ValueError(f"Colonnes manquantes dans la table {SPOTS_TABLE}: {missing}")
 
     df = df.dropna(
         subset=[
@@ -57,7 +58,6 @@ def load_spots() -> pd.DataFrame:
     df["latitude_max"] = pd.to_numeric(df["latitude_max"], errors="coerce")
     df["longitude_min"] = pd.to_numeric(df["longitude_min"], errors="coerce")
     df["longitude_max"] = pd.to_numeric(df["longitude_max"], errors="coerce")
-    df["profondeur_moyenne"] = pd.to_numeric(df.get("profondeur_moyenne"), errors="coerce")
 
     df = df.dropna(
         subset=[
@@ -73,35 +73,3 @@ def load_spots() -> pd.DataFrame:
 
     df = df.sort_values("spot_name", na_position="last").reset_index(drop=True)
     return df
-
-
-def save_spots_for_pipeline(output_path: Path) -> pd.DataFrame:
-    """
-    Charge les spots depuis Supabase et les sauvegarde dans un CSV au format
-    attendu par le pipeline d'entraînement (colonnes: spot_id, name, lat, lon).
-
-    Retourne le DataFrame sauvegardé.
-    """
-    df = load_spots()
-
-    pipeline_df = df.rename(
-        columns={
-            "spot_name": "name",
-            "lat_center": "lat",
-            "lon_center": "lon",
-        }
-    ).copy()
-
-    cols_to_keep = ["spot_id", "name", "lat", "lon"]
-    for optional_col in ["type_fond", "profondeur_moyenne"]:
-        if optional_col in pipeline_df.columns:
-            cols_to_keep.append(optional_col)
-
-    pipeline_df = pipeline_df[cols_to_keep]
-
-    output_path = Path(output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    pipeline_df.to_csv(output_path, index=False)
-
-    print(f"[SPOTS] {len(pipeline_df)} spots sauvegardés depuis Supabase → {output_path}")
-    return pipeline_df
