@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import os
+import threading
 import time
 from datetime import datetime
 from typing import Any
+from urllib.parse import urlparse
 
 import pandas as pd
 import requests
@@ -15,8 +17,83 @@ from pscripts.environment.units import normalize_metric_value
 
 
 REQUEST_TIMEOUT = 120
-MAX_RETRIES = 5
+MAX_RETRIES = int(os.environ.get("OPEN_METEO_MAX_RETRIES", "3"))
 SLEEP_BETWEEN_BATCHES_SEC = 1.0
+
+
+class OpenMeteoRateLimitError(RuntimeError):
+    """Raised when Open-Meteo asks the sync to stop retrying for a while."""
+
+
+class OpenMeteoRateLimitBlockedError(OpenMeteoRateLimitError):
+    """Raised when another thread has already paused the same Open-Meteo host."""
+
+
+class _OpenMeteoHostRateLimiter:
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._next_request_at_by_host: dict[str, float] = {}
+        self._blocked_until_by_host: dict[str, tuple[float, str]] = {}
+
+    def before_request(self, url: str) -> None:
+        host = _host_key(url)
+        while True:
+            with self._lock:
+                now = time.monotonic()
+                blocked_until, reason = self._blocked_until_by_host.get(host, (0.0, ""))
+                if blocked_until > now:
+                    remaining = blocked_until - now
+                    raise OpenMeteoRateLimitBlockedError(
+                        f"Open-Meteo host {host} paused for {remaining:.0f}s after rate limit: {reason}"
+                    )
+
+                wait_for = self._next_request_at_by_host.get(host, 0.0) - now
+                if wait_for <= 0:
+                    self._next_request_at_by_host[host] = now + _min_request_interval_sec()
+                    return
+
+            time.sleep(wait_for)
+
+    def pause_host(self, url: str, delay_seconds: float, reason: str) -> None:
+        host = _host_key(url)
+        blocked_until = time.monotonic() + delay_seconds
+        with self._lock:
+            current_until, _ = self._blocked_until_by_host.get(host, (0.0, ""))
+            if blocked_until > current_until:
+                self._blocked_until_by_host[host] = (blocked_until, reason)
+
+
+OPEN_METEO_RATE_LIMITER = _OpenMeteoHostRateLimiter()
+
+
+def _host_key(url: str) -> str:
+    return urlparse(url).netloc or url
+
+
+def _min_request_interval_sec() -> float:
+    return float(os.environ.get("OPEN_METEO_MIN_REQUEST_INTERVAL_SEC", "3.0"))
+
+
+def _parse_retry_after_seconds(value: str | None) -> float | None:
+    if not value:
+        return None
+    if value.isdigit():
+        return float(value)
+    return None
+
+
+def _rate_limit_delay_seconds(response: requests.Response, attempt: int) -> tuple[float, str]:
+    retry_after = _parse_retry_after_seconds(response.headers.get("Retry-After"))
+    if retry_after is not None:
+        return retry_after, "retry-after"
+
+    body = response.text[:500].lower()
+    if "next hour" in body or "hourly" in body:
+        return float(os.environ.get("OPEN_METEO_HOURLY_RATE_LIMIT_COOLDOWN_SEC", "3600")), "hourly"
+    if "one minute" in body or "minutely" in body:
+        return float(os.environ.get("OPEN_METEO_MINUTELY_RATE_LIMIT_SLEEP_SEC", "65")), "minutely"
+
+    return float(min(30, 2**attempt)), "generic"
 
 
 def _chunk_dataframe(df: pd.DataFrame, chunk_size: int):
@@ -31,12 +108,19 @@ def _get_with_retry(session: requests.Session, url: str, params: dict[str, Any])
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
+            OPEN_METEO_RATE_LIMITER.before_request(url)
             response = session.get(url, params=params, timeout=REQUEST_TIMEOUT)
             last_status = response.status_code
             if response.status_code >= 400:
                 last_body = response.text[:500]
             if response.status_code == 429:
-                time.sleep(min(30, 2**attempt))
+                delay_seconds, scope = _rate_limit_delay_seconds(response, attempt)
+                OPEN_METEO_RATE_LIMITER.pause_host(url, delay_seconds, scope)
+                if scope == "hourly":
+                    raise OpenMeteoRateLimitError(
+                        f"Open-Meteo hourly rate limit reached for {url}; paused for {delay_seconds:.0f}s"
+                    )
+                time.sleep(delay_seconds)
                 continue
             if response.status_code == 400:
                 response.raise_for_status()
@@ -46,6 +130,8 @@ def _get_with_retry(session: requests.Session, url: str, params: dict[str, Any])
             last_exc = exc
             if last_status == 400:
                 break
+            if isinstance(exc, OpenMeteoRateLimitError):
+                raise
             if attempt == MAX_RETRIES:
                 break
             time.sleep(min(30, 2**attempt))
@@ -241,7 +327,11 @@ class OpenMeteoHourlySource(ForecastSource):
         rows: list[SourceValue] = []
 
         for spots_batch in _chunk_dataframe(spots, self.batch_size):
-            rows.extend(self._fetch_batch(spots_batch, run_time))
+            try:
+                rows.extend(self._fetch_batch(spots_batch, run_time))
+            except OpenMeteoRateLimitError as exc:
+                print(f"[WARN] {self.config.code} stopped early after Open-Meteo rate limit: {exc}")
+                break
             time.sleep(SLEEP_BETWEEN_BATCHES_SEC)
 
         return rows
@@ -256,6 +346,8 @@ class OpenMeteoHourlySource(ForecastSource):
                 self.variable_map,
             )
             items = _normalize_payload(payload, expected_count=len(spots_batch))
+        except OpenMeteoRateLimitError:
+            raise
         except RuntimeError as exc:
             if "status=400" not in str(exc):
                 print(f"[WARN] {self.config.code} batch skipped: {exc}")

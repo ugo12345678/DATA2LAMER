@@ -9,6 +9,7 @@ from pscripts.environment.consolidation import consolidate_source_values
 from pscripts.environment.entities import SourceConfig, SourceValue
 from pscripts.environment.r2_storage import R2SourceValueArchive
 from pscripts.environment.repositories import Data2LamerForecastRepository
+from pscripts.environment.sources import open_meteo
 
 
 class FailingTable:
@@ -30,6 +31,31 @@ class FakeR2Client:
 
     def put_object(self, **kwargs):
         self.objects.append(kwargs)
+
+
+class FakeOpenMeteoResponse:
+    def __init__(self, status_code, text="", headers=None, payload=None):
+        self.status_code = status_code
+        self.text = text
+        self.headers = headers or {}
+        self._payload = payload or {}
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise RuntimeError(f"HTTP {self.status_code}")
+
+    def json(self):
+        return self._payload
+
+
+class FakeOpenMeteoSession:
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.calls = 0
+
+    def get(self, *args, **kwargs):
+        self.calls += 1
+        return self.responses.pop(0)
 
 
 class EnvironmentConsolidationTest(unittest.TestCase):
@@ -116,6 +142,70 @@ class EnvironmentConsolidationTest(unittest.TestCase):
         body = gzip.decompress(fake_client.objects[0]["Body"]).decode("utf-8")
         self.assertIn('"spot_id":"spot-1"', body)
         self.assertIn('"metric":"wind_speed"', body)
+
+    def test_open_meteo_hourly_rate_limit_stops_without_retrying(self):
+        previous_cooldown = os.environ.get("OPEN_METEO_HOURLY_RATE_LIMIT_COOLDOWN_SEC")
+        previous_interval = os.environ.get("OPEN_METEO_MIN_REQUEST_INTERVAL_SEC")
+        os.environ["OPEN_METEO_HOURLY_RATE_LIMIT_COOLDOWN_SEC"] = "1"
+        os.environ["OPEN_METEO_MIN_REQUEST_INTERVAL_SEC"] = "0"
+        open_meteo.OPEN_METEO_RATE_LIMITER = open_meteo._OpenMeteoHostRateLimiter()
+        session = FakeOpenMeteoSession(
+            [
+                FakeOpenMeteoResponse(
+                    429,
+                    '{"error":true,"reason":"Hourly API request limit exceeded. Please try again in the next hour."}',
+                )
+            ]
+        )
+
+        try:
+            with self.assertRaises(open_meteo.OpenMeteoRateLimitError):
+                open_meteo._get_with_retry(session, "https://api.open-meteo.com/v1/forecast", {})
+        finally:
+            if previous_cooldown is None:
+                os.environ.pop("OPEN_METEO_HOURLY_RATE_LIMIT_COOLDOWN_SEC", None)
+            else:
+                os.environ["OPEN_METEO_HOURLY_RATE_LIMIT_COOLDOWN_SEC"] = previous_cooldown
+            if previous_interval is None:
+                os.environ.pop("OPEN_METEO_MIN_REQUEST_INTERVAL_SEC", None)
+            else:
+                os.environ["OPEN_METEO_MIN_REQUEST_INTERVAL_SEC"] = previous_interval
+
+        self.assertEqual(session.calls, 1)
+
+    def test_open_meteo_rate_limit_blocks_same_host_for_other_sources(self):
+        previous_cooldown = os.environ.get("OPEN_METEO_HOURLY_RATE_LIMIT_COOLDOWN_SEC")
+        previous_interval = os.environ.get("OPEN_METEO_MIN_REQUEST_INTERVAL_SEC")
+        os.environ["OPEN_METEO_HOURLY_RATE_LIMIT_COOLDOWN_SEC"] = "60"
+        os.environ["OPEN_METEO_MIN_REQUEST_INTERVAL_SEC"] = "0"
+        open_meteo.OPEN_METEO_RATE_LIMITER = open_meteo._OpenMeteoHostRateLimiter()
+        first_session = FakeOpenMeteoSession(
+            [
+                FakeOpenMeteoResponse(
+                    429,
+                    '{"error":true,"reason":"Hourly API request limit exceeded. Please try again in the next hour."}',
+                )
+            ]
+        )
+        second_session = FakeOpenMeteoSession([FakeOpenMeteoResponse(200, payload={"hourly": {}})])
+
+        try:
+            with self.assertRaises(open_meteo.OpenMeteoRateLimitError):
+                open_meteo._get_with_retry(first_session, "https://api.open-meteo.com/v1/forecast", {})
+            with self.assertRaises(open_meteo.OpenMeteoRateLimitBlockedError):
+                open_meteo._get_with_retry(second_session, "https://api.open-meteo.com/v1/gfs", {})
+        finally:
+            if previous_cooldown is None:
+                os.environ.pop("OPEN_METEO_HOURLY_RATE_LIMIT_COOLDOWN_SEC", None)
+            else:
+                os.environ["OPEN_METEO_HOURLY_RATE_LIMIT_COOLDOWN_SEC"] = previous_cooldown
+            if previous_interval is None:
+                os.environ.pop("OPEN_METEO_MIN_REQUEST_INTERVAL_SEC", None)
+            else:
+                os.environ["OPEN_METEO_MIN_REQUEST_INTERVAL_SEC"] = previous_interval
+
+        self.assertEqual(first_session.calls, 1)
+        self.assertEqual(second_session.calls, 0)
 
 
 if __name__ == "__main__":
