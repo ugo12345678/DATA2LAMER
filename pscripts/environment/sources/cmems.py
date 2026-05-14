@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 import os
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -15,7 +14,6 @@ from pscripts.environment.units import normalize_metric_value, to_float
 
 
 SPOT_MARGIN_DEG = float(os.environ.get("SPOT_MARGIN_DEG", "0.03"))
-CMEMS_MAX_WORKERS = int(os.environ.get("CMEMS_MAX_WORKERS", "6"))
 
 
 def cmems_enabled() -> bool:
@@ -29,12 +27,12 @@ def _forecast_window(run_time: datetime) -> tuple[str, str]:
     return start.isoformat(), end.isoformat()
 
 
-def _spot_bbox(spot: pd.Series) -> dict[str, float]:
+def _spots_bbox(spots: pd.DataFrame) -> dict[str, float]:
     return {
-        "minimum_longitude": float(spot["longitude_min"]) - SPOT_MARGIN_DEG,
-        "maximum_longitude": float(spot["longitude_max"]) + SPOT_MARGIN_DEG,
-        "minimum_latitude": float(spot["latitude_min"]) - SPOT_MARGIN_DEG,
-        "maximum_latitude": float(spot["latitude_max"]) + SPOT_MARGIN_DEG,
+        "minimum_longitude": float(spots["longitude_min"].min()) - SPOT_MARGIN_DEG,
+        "maximum_longitude": float(spots["longitude_max"].max()) + SPOT_MARGIN_DEG,
+        "minimum_latitude": float(spots["latitude_min"].min()) - SPOT_MARGIN_DEG,
+        "maximum_latitude": float(spots["latitude_max"].max()) + SPOT_MARGIN_DEG,
     }
 
 
@@ -57,10 +55,16 @@ def _maybe_select_surface(ds):
     return ds
 
 
-def _open_dataset(dataset_id: str, spot: pd.Series, run_time: datetime, select_surface: bool):
+def _open_dataset(dataset_id: str, spots: pd.DataFrame, run_time: datetime, select_surface: bool):
     import copernicusmarine
 
     start_dt, end_dt = _forecast_window(run_time)
+    bbox = _spots_bbox(spots)
+    print(
+        "[INFO] CMEMS opening dataset "
+        f"{dataset_id} bbox=({bbox['minimum_latitude']:.3f},{bbox['minimum_longitude']:.3f})"
+        f"-({bbox['maximum_latitude']:.3f},{bbox['maximum_longitude']:.3f})"
+    )
     ds = copernicusmarine.open_dataset(
         dataset_id=dataset_id,
         username=os.environ["CMEMS_USERNAME"],
@@ -68,7 +72,7 @@ def _open_dataset(dataset_id: str, spot: pd.Series, run_time: datetime, select_s
         start_datetime=start_dt,
         end_datetime=end_dt,
         coordinates_selection_method="nearest",
-        **_spot_bbox(spot),
+        **bbox,
     )
     ds = _standardize_coords(ds)
     if select_surface:
@@ -111,6 +115,20 @@ def _resolution_minutes(df: pd.DataFrame) -> int | None:
     return int(delta.total_seconds() // 60)
 
 
+def _dataset_resolution_minutes(ds) -> int | None:
+    if "time" not in ds.coords:
+        return None
+    try:
+        times = pd.to_datetime(ds.coords["time"].values, errors="coerce", utc=True)
+    except Exception:
+        return None
+    times = pd.Series(times).dropna().sort_values().drop_duplicates()
+    if len(times) < 2:
+        return None
+    delta = times.diff().dropna().median()
+    return int(delta.total_seconds() // 60)
+
+
 class CmemsSource(ForecastSource):
     dataset_id: str
     variable_map: dict[str, list[str]]
@@ -122,35 +140,40 @@ class CmemsSource(ForecastSource):
             print(f"[INFO] {self.config.code} skipped: CMEMS credentials are not configured.")
             return []
 
-        rows: list[SourceValue] = []
-        with ThreadPoolExecutor(max_workers=CMEMS_MAX_WORKERS) as executor:
-            futures = {
-                executor.submit(self._fetch_spot, spot, run_time): spot["spot_id"]
-                for _, spot in spots.iterrows()
-            }
-            for future in as_completed(futures):
-                spot_id = futures[future]
-                try:
-                    rows.extend(future.result())
-                except Exception as exc:
-                    print(f"[WARN] {self.config.code} failed for spot {spot_id}: {exc}")
-        return rows
-
-    def _fetch_spot(self, spot: pd.Series, run_time: datetime) -> list[SourceValue]:
-        ds = _open_dataset(self.dataset_id, spot, run_time, self.select_surface)
+        ds = _open_dataset(self.dataset_id, spots, run_time, self.select_surface)
         picked = _pick_available_vars(ds, self.variable_map)
         if not picked:
+            print(f"[WARN] {self.config.code} skipped: no expected variables found in {self.dataset_id}.")
             return []
 
         ds = ds[list(picked.values())].rename({v: k for k, v in picked.items()})
+        resolution = _dataset_resolution_minutes(ds)
+        rows: list[SourceValue] = []
+        for _, spot in spots.iterrows():
+            try:
+                rows.extend(self._values_for_spot(ds, spot, run_time, resolution))
+            except Exception as exc:
+                print(f"[WARN] {self.config.code} failed for spot {spot['spot_id']}: {exc}")
+        return rows
+
+    def _values_for_spot(
+        self,
+        ds,
+        spot: pd.Series,
+        run_time: datetime,
+        resolution: int | None,
+    ) -> list[SourceValue]:
         point = ds.sel(lat=float(spot["lat_center"]), lon=float(spot["lon_center"]), method="nearest")
-        df = point[list(picked.keys())].to_dataframe().reset_index()
+        selected_metrics = [metric for metric in self.variable_map if metric in point]
+        if not selected_metrics:
+            return []
+
+        df = point[selected_metrics].to_dataframe().reset_index()
         if df.empty or "time" not in df.columns:
             return []
 
         grid_lat = _scalar_coord(point, "lat")
         grid_lon = _scalar_coord(point, "lon")
-        resolution = _resolution_minutes(df)
         rows: list[SourceValue] = []
 
         for _, frame_row in df.iterrows():
@@ -261,4 +284,3 @@ class CmemsBgcSource(CmemsSource):
         "chlorophyll": "mg/m3",
         "light_attenuation": "1/m",
     }
-
