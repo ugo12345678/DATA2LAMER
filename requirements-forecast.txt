@@ -4,6 +4,7 @@ netCDF4
 pandas
 requests
 supabase
+boto3
 numpy
 pypdf
 pdf2image

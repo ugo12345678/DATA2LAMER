@@ -35,7 +35,7 @@ La migration supprime l'ancienne table `forecast_predictions`.
 
 ### DATA2LAMER
 
-Base technique, vide au depart. Elle stocke les tables de travail :
+Base technique, vide au depart. Elle stocke les tables de travail si elle est configuree :
 
 ```text
 db/data2lamer/2026-05-14_environment_forecast_pipeline.sql
@@ -48,7 +48,8 @@ Tables :
 - `forecast_source_values`
 - `spot_source_grid_points`
 
-Si les variables `DATA2LAMER_SUPABASE_URL` et `DATA2LAMER_SUPABASE_SERVICE_KEY` ne sont pas definies, le pipeline fonctionne quand meme mais ne persiste pas les valeurs brutes.
+Si les variables `DATA2LAMER_SUPABASE_URL` et `DATA2LAMER_SUPABASE_SERVICE_KEY` ne sont pas definies, le pipeline fonctionne quand meme.
+Pour eviter de saturer Postgres avec les valeurs horaires brutes, l'archive recommandee est Cloudflare R2 : un fichier `jsonl.gz` par source et par run.
 
 ## Sources gratuites
 
@@ -80,11 +81,16 @@ VU2LAMER_SUPABASE_URL
 VU2LAMER_SUPABASE_SERVICE_KEY
 DATA2LAMER_SUPABASE_URL
 DATA2LAMER_SUPABASE_SERVICE_KEY
-FORECAST_DAYS=7
+R2_ENDPOINT_URL
+R2_ACCESS_KEY_ID
+R2_SECRET_ACCESS_KEY
+R2_BUCKET
+R2_SOURCE_VALUES_PREFIX=environment/source_values
+FORECAST_DAYS=3
 FORECAST_TARGET_TIMEZONE=Europe/Paris
 OPEN_METEO_BATCH_SIZE=20
 APP_PROVENANCE_MODE=compact
-DATA2LAMER_STORE_SOURCE_VALUES=true
+DATA2LAMER_STORE_SOURCE_VALUES=false
 ENABLE_CMEMS=true
 ENABLE_METNO=true
 CMEMS_USERNAME

@@ -54,13 +54,18 @@ class Data2LamerForecastRepository:
     def __init__(self, client: Client | None = None) -> None:
         self.client = client or get_data2lamer_supabase()
         self.batch_size = int(os.environ.get("SOURCE_VALUES_UPSERT_BATCH_SIZE", "1000"))
+        self.disabled_reason: str | None = None
 
     @property
     def available(self) -> bool:
-        return self.client is not None
+        return self.client is not None and self.disabled_reason is None
+
+    def disable(self, exc: Exception) -> None:
+        self.disabled_reason = str(exc)
+        print(f"[WARN] DATA2LAMER storage disabled for this run: {self.disabled_reason}")
 
     def ensure_sources(self, sources: list[SourceConfig]) -> None:
-        if not self.client:
+        if not self.available:
             return
 
         rows = [
@@ -75,30 +80,36 @@ class Data2LamerForecastRepository:
             for source in sources
         ]
         if rows:
-            self.client.table(SOURCES_TABLE).upsert(rows, on_conflict="code").execute()
+            try:
+                self.client.table(SOURCES_TABLE).upsert(rows, on_conflict="code").execute()
+            except Exception as exc:
+                self.disable(exc)
 
     def create_run(self, source: SourceConfig, run_time: datetime, window_start: datetime, window_end: datetime) -> str:
         run_id = str(uuid.uuid4())
-        if not self.client:
+        if not self.available:
             return run_id
 
-        self.client.table(RUNS_TABLE).insert(
-            {
-                "id": run_id,
-                "source_code": source.code,
-                "status": "running",
-                "started_at": run_time.isoformat(),
-                "window_start": window_start.isoformat(),
-                "window_end": window_end.isoformat(),
-                "parameters": {
-                    "forecast_days": os.environ.get("FORECAST_DAYS", "7"),
-                },
-            }
-        ).execute()
+        try:
+            self.client.table(RUNS_TABLE).insert(
+                {
+                    "id": run_id,
+                    "source_code": source.code,
+                    "status": "running",
+                    "started_at": run_time.isoformat(),
+                    "window_start": window_start.isoformat(),
+                    "window_end": window_end.isoformat(),
+                    "parameters": {
+                        "forecast_days": os.environ.get("FORECAST_DAYS", "7"),
+                    },
+                }
+            ).execute()
+        except Exception as exc:
+            self.disable(exc)
         return run_id
 
     def finish_run(self, run_id: str, status: str, rows_count: int, error: str | None = None) -> None:
-        if not self.client:
+        if not self.available:
             return
 
         update = {
@@ -107,19 +118,26 @@ class Data2LamerForecastRepository:
             "rows_count": rows_count,
             "error": error,
         }
-        self.client.table(RUNS_TABLE).update(update).eq("id", run_id).execute()
+        try:
+            self.client.table(RUNS_TABLE).update(update).eq("id", run_id).execute()
+        except Exception as exc:
+            self.disable(exc)
 
     def insert_source_values(self, values: list[SourceValue]) -> int:
-        if not self.client or os.environ.get("DATA2LAMER_STORE_SOURCE_VALUES", "true").lower() not in {"1", "true", "yes"}:
+        if not self.available or os.environ.get("DATA2LAMER_STORE_SOURCE_VALUES", "true").lower() not in {"1", "true", "yes"}:
             return 0
 
         rows = [value.to_data2lamer_row() for value in values]
-        for batch in _chunks(rows, self.batch_size):
-            self.client.table(SOURCE_VALUES_TABLE).insert(batch).execute()
+        try:
+            for batch in _chunks(rows, self.batch_size):
+                self.client.table(SOURCE_VALUES_TABLE).insert(batch).execute()
+        except Exception as exc:
+            self.disable(exc)
+            return 0
         return len(rows)
 
     def upsert_grid_points(self, values: list[SourceValue]) -> int:
-        if not self.client:
+        if not self.available:
             return 0
 
         seen = set()
@@ -149,10 +167,14 @@ class Data2LamerForecastRepository:
                 }
             )
 
-        for batch in _chunks(rows, self.batch_size):
-            (
-                self.client.table(GRID_POINTS_TABLE)
-                .upsert(batch, on_conflict="source_code,spot_id,model,grid_lat,grid_lon")
-                .execute()
-            )
+        try:
+            for batch in _chunks(rows, self.batch_size):
+                (
+                    self.client.table(GRID_POINTS_TABLE)
+                    .upsert(batch, on_conflict="source_code,spot_id,model,grid_lat,grid_lon")
+                    .execute()
+                )
+        except Exception as exc:
+            self.disable(exc)
+            return 0
         return len(rows)

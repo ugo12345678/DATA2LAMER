@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 
 from pscripts.environment.consolidation import consolidate_source_values
 from pscripts.environment.entities import SourceValue
+from pscripts.environment.r2_storage import R2SourceValueArchive
 from pscripts.environment.repositories import Data2LamerForecastRepository, Vu2LamerForecastRepository
 from pscripts.environment.sources.base import ForecastSource
 from pscripts.environment.sources.cmems import CmemsBgcSource, CmemsPhySource, CmemsWavSource, cmems_enabled
@@ -62,6 +63,7 @@ def build_sources() -> list[ForecastSource]:
 def fetch_source_values(
     sources: list[ForecastSource],
     data_repo: Data2LamerForecastRepository,
+    r2_archive: R2SourceValueArchive,
 ) -> tuple[list[SourceValue], datetime]:
     spots = load_spots()
     run_time = utc_now_hour()
@@ -89,9 +91,19 @@ def fetch_source_values(
                     value.run_id = run_id
 
                 inserted = data_repo.insert_source_values(values)
+                r2_key = r2_archive.write_source_values(
+                    source=source.config,
+                    run_id=run_id,
+                    run_time=run_time,
+                    values=values,
+                )
                 data_repo.upsert_grid_points(values)
                 data_repo.finish_run(run_id, "success", rows_count=len(values))
-                print(f"[OK] {source.config.code}: {len(values)} source values ({inserted} stored in DATA2LAMER)")
+                archive_status = f", R2: {r2_key}" if r2_key else ""
+                print(
+                    f"[OK] {source.config.code}: {len(values)} source values "
+                    f"({inserted} stored in DATA2LAMER{archive_status})"
+                )
                 all_values.extend(values)
             except Exception as exc:
                 data_repo.finish_run(run_id, "failed", rows_count=0, error=str(exc))
@@ -109,7 +121,13 @@ def main() -> None:
     if not data_repo.available:
         print("[INFO] DATA2LAMER is not configured; raw source values will not be stored.")
 
-    values, run_time = fetch_source_values(sources, data_repo)
+    r2_archive = R2SourceValueArchive.from_env()
+    if r2_archive.available:
+        print(f"[INFO] R2 raw source archive enabled: bucket={r2_archive.bucket} prefix={r2_archive.prefix}")
+    else:
+        print("[INFO] R2 raw source archive is not configured.")
+
+    values, run_time = fetch_source_values(sources, data_repo, r2_archive)
     if not values:
         raise RuntimeError("No forecast source values were fetched.")
 
