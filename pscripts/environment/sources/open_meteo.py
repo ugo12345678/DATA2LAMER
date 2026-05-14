@@ -65,6 +65,8 @@ def _get_with_variable_fallback(
     except RuntimeError as exc:
         if "status=400" not in str(exc):
             raise
+        if "Cannot initialize MultiDomains" in str(exc):
+            raise
         print(f"[WARN] Open-Meteo batch failed for {url}; retrying variables one by one: {exc}")
 
     merged_payload: dict | list | None = None
@@ -255,6 +257,10 @@ class OpenMeteoHourlySource(ForecastSource):
             )
             items = _normalize_payload(payload, expected_count=len(spots_batch))
         except RuntimeError as exc:
+            if "status=400" not in str(exc):
+                print(f"[WARN] {self.config.code} batch skipped: {exc}")
+                return []
+
             if len(spots_batch) <= 1:
                 spot = spots_batch.iloc[0]
                 print(
@@ -430,7 +436,7 @@ class OpenMeteoMarineDwdEwamSource(OpenMeteoMarineMeteoFranceWaveSource):
         provider="open-meteo",
         kind="marine",
     )
-    model_name = "dwd_ewam"
+    model_name = "ewam"
     forecast_days_cap = 4
 
 
@@ -441,7 +447,7 @@ class OpenMeteoMarineDwdGwamSource(OpenMeteoMarineMeteoFranceWaveSource):
         provider="open-meteo",
         kind="marine",
     )
-    model_name = "dwd_gwam"
+    model_name = "gwam"
     forecast_days_cap = 4
 
 
