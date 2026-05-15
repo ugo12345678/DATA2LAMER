@@ -55,6 +55,18 @@ def build_sources() -> list[ForecastSource]:
         for item in os.environ.get("DISABLED_FORECAST_SOURCES", "").split(",")
         if item.strip()
     }
+    enabled = {
+        item.strip()
+        for item in os.environ.get("FORECAST_SOURCES", "").split(",")
+        if item.strip()
+    }
+    if enabled:
+        known = {source.config.code for source in sources}
+        unknown = sorted(enabled - known)
+        if unknown:
+            print(f"[WARN] Unknown FORECAST_SOURCES ignored: {', '.join(unknown)}")
+        sources = [source for source in sources if source.config.code in enabled]
+
     return [source for source in sources if source.config.code not in disabled]
 
 

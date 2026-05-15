@@ -9,6 +9,7 @@ from pscripts.environment.consolidation import consolidate_source_values
 from pscripts.environment.entities import SourceConfig, SourceValue
 from pscripts.environment.r2_storage import R2SourceValueArchive
 from pscripts.environment.repositories import Data2LamerForecastRepository
+from pscripts.environment.sync_environment_forecasts import build_sources
 from pscripts.environment.sources import open_meteo
 
 
@@ -206,6 +207,32 @@ class EnvironmentConsolidationTest(unittest.TestCase):
 
         self.assertEqual(first_session.calls, 1)
         self.assertEqual(second_session.calls, 0)
+
+    def test_forecast_sources_allowlist_limits_built_sources(self):
+        previous_sources = os.environ.get("FORECAST_SOURCES")
+        previous_cmems = os.environ.get("ENABLE_CMEMS")
+        previous_metno = os.environ.get("ENABLE_METNO")
+        os.environ["FORECAST_SOURCES"] = "open_meteo_weather,open_meteo_marine"
+        os.environ["ENABLE_CMEMS"] = "false"
+        os.environ["ENABLE_METNO"] = "false"
+
+        try:
+            source_codes = [source.config.code for source in build_sources()]
+        finally:
+            if previous_sources is None:
+                os.environ.pop("FORECAST_SOURCES", None)
+            else:
+                os.environ["FORECAST_SOURCES"] = previous_sources
+            if previous_cmems is None:
+                os.environ.pop("ENABLE_CMEMS", None)
+            else:
+                os.environ["ENABLE_CMEMS"] = previous_cmems
+            if previous_metno is None:
+                os.environ.pop("ENABLE_METNO", None)
+            else:
+                os.environ["ENABLE_METNO"] = previous_metno
+
+        self.assertEqual(source_codes, ["open_meteo_weather", "open_meteo_marine"])
 
 
 if __name__ == "__main__":

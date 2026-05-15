@@ -88,19 +88,23 @@ R2_BUCKET
 R2_SOURCE_VALUES_PREFIX=environment/source_values
 FORECAST_DAYS=3
 FORECAST_TARGET_TIMEZONE=Europe/Paris
-OPEN_METEO_BATCH_SIZE=20
+OPEN_METEO_BATCH_SIZE=50
 OPEN_METEO_MIN_REQUEST_INTERVAL_SEC=3.0
 OPEN_METEO_MINUTELY_RATE_LIMIT_SLEEP_SEC=65
 OPEN_METEO_HOURLY_RATE_LIMIT_COOLDOWN_SEC=3600
 OPEN_METEO_MAX_RETRIES=3
 APP_PROVENANCE_MODE=compact
 DATA2LAMER_STORE_SOURCE_VALUES=false
-ENABLE_CMEMS=true
+FORECAST_THREAD_WORKERS=2
+FORECAST_SOURCES=open_meteo_weather,open_meteo_dwd_icon,open_meteo_marine,open_meteo_marine_meteofrance_wave,metno_locationforecast
+ENABLE_CMEMS=false
 ENABLE_METNO=true
 CMEMS_USERNAME
 CMEMS_PASSWORD
 METNO_USER_AGENT
 ```
+
+Par defaut, le workflow programme reste volontairement limite aux sources rapides pour eviter les timeouts GitHub Actions et les limites horaires Open-Meteo. Pour un run complet manuel, definir `FORECAST_SOURCES` avec les codes voulus et passer `ENABLE_CMEMS=true` si les datasets Copernicus doivent etre interroges.
 
 ## Alertes
 
