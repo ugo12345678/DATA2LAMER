@@ -5,6 +5,8 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from postgrest.exceptions import APIError
+from postgrest.types import CountMethod, ReturnMethod
 from supabase import Client
 
 from pscripts.environment.entities import SourceConfig, SourceValue
@@ -23,31 +25,54 @@ def _chunks(rows: list[dict[str, Any]], size: int):
         yield rows[start : start + size]
 
 
+def _is_statement_timeout(exc: Exception) -> bool:
+    return isinstance(exc, APIError) and getattr(exc, "code", None) == "57014"
+
+
 class Vu2LamerForecastRepository:
     def __init__(self, client: Client | None = None) -> None:
         self.client = client or get_vu2lamer_supabase()
-        self.batch_size = int(os.environ.get("FORECAST_UPSERT_BATCH_SIZE", "500"))
+        self.batch_size = int(os.environ.get("FORECAST_UPSERT_BATCH_SIZE", "100"))
 
     def delete_expired(self) -> int:
         keep_past_hours = int(os.environ.get("FORECAST_KEEP_PAST_HOURS", "48"))
         cutoff = datetime.now(timezone.utc) - timedelta(hours=keep_past_hours)
         resp = (
             self.client.table(APP_FORECAST_TABLE)
-            .delete()
+            .delete(count=CountMethod.exact, returning=ReturnMethod.minimal)
             .lt("valid_time", cutoff.isoformat())
             .execute()
         )
-        return len(resp.data or [])
+        return resp.count or 0
 
     def upsert(self, rows: list[dict[str, Any]]) -> int:
         valid_rows = [row for row in rows if row.get("spot_id") and row.get("valid_time")]
         for batch in _chunks(valid_rows, self.batch_size):
+            self._upsert_batch(batch)
+        return len(valid_rows)
+
+    def _upsert_batch(self, batch: list[dict[str, Any]]) -> None:
+        try:
             (
                 self.client.table(APP_FORECAST_TABLE)
-                .upsert(batch, on_conflict="spot_id,valid_time")
+                .upsert(
+                    batch,
+                    on_conflict="spot_id,valid_time",
+                    returning=ReturnMethod.minimal,
+                )
                 .execute()
             )
-        return len(valid_rows)
+        except Exception as exc:
+            if not _is_statement_timeout(exc) or len(batch) <= 1:
+                raise
+
+            midpoint = len(batch) // 2
+            print(
+                "[WARN] VU2LAMER upsert batch timed out; "
+                f"retrying as {midpoint} + {len(batch) - midpoint} rows."
+            )
+            self._upsert_batch(batch[:midpoint])
+            self._upsert_batch(batch[midpoint:])
 
 
 class Data2LamerForecastRepository:

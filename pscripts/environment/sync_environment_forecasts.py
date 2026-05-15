@@ -74,6 +74,8 @@ def fetch_source_values(
     sources: list[ForecastSource],
     data_repo: Data2LamerForecastRepository,
     r2_archive: R2SourceValueArchive,
+    *,
+    collect_values: bool = True,
 ) -> tuple[list[SourceValue], datetime]:
     spots = load_spots()
     run_time = utc_now_hour()
@@ -114,7 +116,8 @@ def fetch_source_values(
                     f"[OK] {source.config.code}: {len(values)} source values "
                     f"({inserted} stored in DATA2LAMER{archive_status})"
                 )
-                all_values.extend(values)
+                if collect_values:
+                    all_values.extend(values)
             except Exception as exc:
                 data_repo.finish_run(run_id, "failed", rows_count=0, error=str(exc))
                 print(f"[ERROR] {source.config.code}: {exc}")
@@ -140,7 +143,18 @@ def main() -> None:
             + ", ".join(r2_archive.missing_settings())
         )
 
-    values, run_time = fetch_source_values(sources, data_repo, r2_archive)
+    push_to_supabase = os.environ.get("FORECAST_PUSH_TO_SUPABASE", "true").lower() in {"1", "true", "yes"}
+
+    values, run_time = fetch_source_values(
+        sources,
+        data_repo,
+        r2_archive,
+        collect_values=push_to_supabase,
+    )
+    if not push_to_supabase:
+        print("[OK] Source values archived; VU2LAMER Supabase publication skipped.")
+        return
+
     if not values:
         raise RuntimeError("No forecast source values were fetched.")
 

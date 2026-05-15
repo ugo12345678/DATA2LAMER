@@ -1,25 +1,25 @@
-name: Environment Forecast Sync
+name: Environment Forecast Publish
 
 on:
-  schedule:
-    - cron: "0 */6 * * *"
+  workflow_run:
+    workflows: ["Environment Forecast Sync"]
+    types:
+      - completed
   workflow_dispatch:
 
 concurrency:
-  group: environment-forecast-sync
+  group: environment-forecast-publish
   cancel-in-progress: false
 
 jobs:
-  forecast-job:
+  publish-job:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 120
 
     env:
       VU2LAMER_SUPABASE_URL: ${{ secrets.VU2LAMER_SUPABASE_URL }}
       VU2LAMER_SUPABASE_SERVICE_KEY: ${{ secrets.VU2LAMER_SUPABASE_SERVICE_KEY }}
-
-      DATA2LAMER_SUPABASE_URL: ${{ secrets.DATA2LAMER_SUPABASE_URL }}
-      DATA2LAMER_SUPABASE_SERVICE_KEY: ${{ secrets.DATA2LAMER_SUPABASE_SERVICE_KEY }}
 
       R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -27,22 +27,11 @@ jobs:
       R2_BUCKET: ${{ secrets.R2_BUCKET }}
       R2_SOURCE_VALUES_PREFIX: ${{ vars.R2_SOURCE_VALUES_PREFIX || 'environment/source_values' }}
 
-      CMEMS_USERNAME: ${{ secrets.CMEMS_USERNAME }}
-      CMEMS_PASSWORD: ${{ secrets.CMEMS_PASSWORD }}
-
-      FORECAST_DAYS: ${{ vars.FORECAST_DAYS || '3' }}
       FORECAST_TARGET_TIMEZONE: Europe/Paris
-      OPEN_METEO_BATCH_SIZE: ${{ vars.OPEN_METEO_BATCH_SIZE || '50' }}
       APP_PROVENANCE_MODE: compact
-      DATA2LAMER_STORE_SOURCE_VALUES: false
-      FORECAST_PUSH_TO_SUPABASE: false
       FORECAST_UPSERT_BATCH_SIZE: ${{ vars.FORECAST_UPSERT_BATCH_SIZE || '100' }}
-      FORECAST_THREAD_WORKERS: ${{ vars.FORECAST_THREAD_WORKERS || '2' }}
-      SPOT_MARGIN_DEG: 0.03
-      ENABLE_CMEMS: ${{ vars.ENABLE_CMEMS || 'false' }}
-      ENABLE_METNO: ${{ vars.ENABLE_METNO || 'true' }}
       FORECAST_SOURCES: ${{ vars.FORECAST_SOURCES || 'open_meteo_weather,open_meteo_dwd_icon,open_meteo_marine,open_meteo_marine_meteofrance_wave,metno_locationforecast' }}
-      METNO_USER_AGENT: ${{ vars.METNO_USER_AGENT || 'DATA2LAMER/1.0 github-actions' }}
+      R2_SYNC_LOOKBACK_HOURS: ${{ vars.R2_SYNC_LOOKBACK_HOURS || '12' }}
 
     steps:
       - name: Checkout repo
@@ -58,5 +47,5 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-forecast.txt
 
-      - name: Fetch and archive hourly environment forecasts
-        run: python -m pscripts.environment.sync_environment_forecasts
+      - name: Publish latest R2 environment forecasts to Supabase
+        run: python -m pscripts.environment.publish_environment_forecasts

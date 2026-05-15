@@ -49,3 +49,21 @@ class SourceValue:
             "fetched_at": self.fetched_at.isoformat(),
         }
 
+    @classmethod
+    def from_data2lamer_row(cls, row: dict[str, Any]) -> "SourceValue":
+        return cls(
+            run_id=row.get("run_id"),
+            source_code=str(row["source_code"]),
+            spot_id=str(row["spot_id"]),
+            valid_time=datetime.fromisoformat(str(row["valid_time"])),
+            metric=str(row["metric"]),
+            value=row.get("value"),
+            unit=str(row["unit"]),
+            raw_variable=str(row["raw_variable"]),
+            model=row.get("model"),
+            resolution_minutes=row.get("resolution_minutes"),
+            grid_lat=row.get("grid_lat"),
+            grid_lon=row.get("grid_lon"),
+            quality_flags=row.get("quality_flags") or {},
+            fetched_at=datetime.fromisoformat(str(row["fetched_at"])),
+        )

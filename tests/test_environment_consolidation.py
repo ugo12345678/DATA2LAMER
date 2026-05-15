@@ -4,6 +4,7 @@ import os
 import gzip
 import unittest
 from datetime import datetime, timezone
+from io import BytesIO
 
 from pscripts.environment.consolidation import consolidate_source_values
 from pscripts.environment.entities import SourceConfig, SourceValue
@@ -32,6 +33,33 @@ class FakeR2Client:
 
     def put_object(self, **kwargs):
         self.objects.append(kwargs)
+
+    def get_paginator(self, name):
+        if name != "list_objects_v2":
+            raise ValueError(name)
+        return FakeR2Paginator(self.objects)
+
+    def get_object(self, **kwargs):
+        key = kwargs["Key"]
+        for item in self.objects:
+            if item["Key"] == key:
+                return {"Body": BytesIO(item["Body"])}
+        raise KeyError(key)
+
+
+class FakeR2Paginator:
+    def __init__(self, objects):
+        self.objects = objects
+
+    def paginate(self, **kwargs):
+        prefix = kwargs["Prefix"]
+        yield {
+            "Contents": [
+                {"Key": item["Key"]}
+                for item in self.objects
+                if item["Key"].startswith(prefix)
+            ]
+        }
 
 
 class FakeOpenMeteoResponse:
@@ -143,6 +171,42 @@ class EnvironmentConsolidationTest(unittest.TestCase):
         body = gzip.decompress(fake_client.objects[0]["Body"]).decode("utf-8")
         self.assertIn('"spot_id":"spot-1"', body)
         self.assertIn('"metric":"wind_speed"', body)
+
+    def test_r2_archive_lists_latest_run_and_reads_source_values(self):
+        fake_client = FakeR2Client()
+        archive = R2SourceValueArchive(
+            bucket="bucket",
+            endpoint_url="https://example.r2.cloudflarestorage.com",
+            access_key_id="key",
+            secret_access_key="secret",
+            prefix="test/source_values",
+        )
+        archive._client = fake_client
+        source = SourceConfig("source-a", "Source A", "provider", "weather")
+        run_time = datetime(2026, 5, 14, 8, tzinfo=timezone.utc)
+        value = SourceValue(
+            "spot-1",
+            "source-a",
+            run_time,
+            "wind_speed",
+            4.2,
+            "m/s",
+            run_time,
+            "wind_speed_10m",
+            run_id="run-1",
+        )
+
+        key = archive.write_source_values(source=source, run_id="run-1", run_time=run_time, values=[value])
+        latest_run_time, keys = archive.latest_source_value_keys(
+            lookback_hours=2,
+            now=datetime(2026, 5, 14, 10, tzinfo=timezone.utc),
+        )
+        values = archive.read_source_values(key)
+
+        self.assertEqual(latest_run_time, run_time)
+        self.assertEqual(keys, [key])
+        self.assertEqual(values[0].spot_id, "spot-1")
+        self.assertEqual(values[0].valid_time, run_time)
 
     def test_open_meteo_hourly_rate_limit_stops_without_retrying(self):
         previous_cooldown = os.environ.get("OPEN_METEO_HOURLY_RATE_LIMIT_COOLDOWN_SEC")

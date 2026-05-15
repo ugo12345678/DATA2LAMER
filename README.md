@@ -68,10 +68,16 @@ Meteo-France Marine et SHOM ne sont pas integres pour l'instant afin d'eviter le
 
 ## Synchronisation
 
-Le job GitHub Actions `Environment Forecast Sync` lance :
+Le job GitHub Actions `Environment Forecast Sync` lance la collecte et archive les valeurs source dans R2 :
 
 ```bash
 python -m pscripts.environment.sync_environment_forecasts
+```
+
+Le job `Environment Forecast Publish` se declenche ensuite et publie le dernier run R2 vers Supabase :
+
+```bash
+python -m pscripts.environment.publish_environment_forecasts
 ```
 
 Variables utiles :
@@ -95,6 +101,8 @@ OPEN_METEO_HOURLY_RATE_LIMIT_COOLDOWN_SEC=3600
 OPEN_METEO_MAX_RETRIES=3
 APP_PROVENANCE_MODE=compact
 DATA2LAMER_STORE_SOURCE_VALUES=false
+FORECAST_PUSH_TO_SUPABASE=false
+FORECAST_UPSERT_BATCH_SIZE=100
 FORECAST_THREAD_WORKERS=2
 FORECAST_SOURCES=open_meteo_weather,open_meteo_dwd_icon,open_meteo_marine,open_meteo_marine_meteofrance_wave,metno_locationforecast
 ENABLE_CMEMS=false
@@ -102,9 +110,11 @@ ENABLE_METNO=true
 CMEMS_USERNAME
 CMEMS_PASSWORD
 METNO_USER_AGENT
+R2_SYNC_LOOKBACK_HOURS=12
 ```
 
 Par defaut, le workflow programme reste volontairement limite aux sources rapides pour eviter les timeouts GitHub Actions et les limites horaires Open-Meteo. Pour un run complet manuel, definir `FORECAST_SOURCES` avec les codes voulus et passer `ENABLE_CMEMS=true` si les datasets Copernicus doivent etre interroges.
+La publication Supabase est separee de la collecte : si Supabase timeoute, relancer `Environment Forecast Publish` suffit, sans refaire les appels meteo.
 
 ## Alertes
 

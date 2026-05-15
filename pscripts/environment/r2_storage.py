@@ -3,7 +3,7 @@ from __future__ import annotations
 import gzip
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 
 from pscripts.environment.entities import SourceConfig, SourceValue
@@ -106,3 +106,55 @@ class R2SourceValueArchive:
             },
         )
         return key
+
+    def list_source_value_keys(
+        self,
+        *,
+        run_time: datetime,
+        source_codes: set[str] | None = None,
+    ) -> list[str]:
+        if not self.available:
+            return []
+
+        run_date = run_time.strftime("%Y-%m-%d")
+        run_hour = run_time.strftime("%H")
+        prefix = f"{self.prefix}/run_date={run_date}/run_hour={run_hour}/"
+        keys: list[str] = []
+        paginator = self.client().get_paginator("list_objects_v2")
+        for page in paginator.paginate(Bucket=self.bucket, Prefix=prefix):
+            for item in page.get("Contents", []):
+                key = item.get("Key")
+                if not key or not key.endswith(".jsonl.gz"):
+                    continue
+                if source_codes and not any(f"/source_code={code}/" in key for code in source_codes):
+                    continue
+                keys.append(key)
+        return sorted(keys)
+
+    def latest_source_value_keys(
+        self,
+        *,
+        lookback_hours: int = 12,
+        source_codes: set[str] | None = None,
+        now: datetime | None = None,
+    ) -> tuple[datetime | None, list[str]]:
+        current = now or datetime.now(timezone.utc)
+        current = current.astimezone(timezone.utc).replace(minute=0, second=0, microsecond=0)
+        for offset in range(lookback_hours + 1):
+            run_time = current - timedelta(hours=offset)
+            keys = self.list_source_value_keys(run_time=run_time, source_codes=source_codes)
+            if keys:
+                return run_time, keys
+        return None, []
+
+    def read_source_values(self, key: str) -> list[SourceValue]:
+        if not self.available:
+            return []
+
+        response = self.client().get_object(Bucket=self.bucket, Key=key)
+        body = response["Body"].read()
+        values: list[SourceValue] = []
+        for line in gzip.decompress(body).decode("utf-8").splitlines():
+            if line.strip():
+                values.append(SourceValue.from_data2lamer_row(json.loads(line)))
+        return values
