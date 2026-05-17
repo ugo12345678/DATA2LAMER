@@ -49,6 +49,7 @@ METRICS: dict[str, MetricSpec] = {
     ),
     "water_temperature": MetricSpec("water_temperature", "water_temperature_c", "degC"),
     "sea_level_height": MetricSpec("sea_level_height", "sea_level_height_m", "m"),
+    "tide_coefficient": MetricSpec("tide_coefficient", "tide_coefficient", "coef"),
     "current_speed": MetricSpec("current_speed", "current_speed_ms", "m/s"),
     "current_direction": MetricSpec("current_direction", "current_direction_deg", "deg", "circular"),
     "salinity": MetricSpec("salinity", "salinity_psu", "psu"),

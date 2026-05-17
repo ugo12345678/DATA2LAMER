@@ -11,6 +11,7 @@ from pscripts.environment.entities import SourceConfig, SourceValue
 from pscripts.environment.r2_storage import R2SourceValueArchive
 from pscripts.environment.repositories import Data2LamerForecastRepository
 from pscripts.environment.sync_environment_forecasts import build_sources
+from pscripts.environment.sources import maree_info
 from pscripts.environment.sources import open_meteo
 
 
@@ -128,6 +129,61 @@ class EnvironmentConsolidationTest(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         direction = rows[0]["wind_direction_deg"]
         self.assertTrue(direction < 1.0 or direction > 359.0)
+
+    def test_consolidates_tide_coefficient_metric(self):
+        run_time = datetime(2026, 5, 14, 8, tzinfo=timezone.utc)
+        valid_time = datetime(2026, 5, 14, 12, tzinfo=timezone.utc)
+        values = [
+            SourceValue(
+                "spot-1",
+                "maree_info_tide_coefficients",
+                valid_time,
+                "tide_coefficient",
+                77.0,
+                "coef",
+                run_time,
+                "daily_tide_coefficient_max",
+            ),
+        ]
+
+        rows = consolidate_source_values(values, run_time)
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["tide_coefficient"], 77.0)
+        self.assertEqual(rows[0]["provenance"]["tide_coefficient"]["unit"], "coef")
+
+    def test_maree_info_coefficients_parser_reads_daily_values(self):
+        document = """
+        <table>
+          <tr><th colspan="8">Mai 2026</th></tr>
+          <tr><td></td><td>01 V</td><td>Fete du travail</td><td></td><td></td><td></td><td>82</td><td>82</td></tr>
+          <tr><td></td><td>17 D</td><td>Pascal</td><td></td><td></td><td></td><td>98</td><td>99</td></tr>
+        </table>
+        """
+
+        coefficients = maree_info.parse_maree_info_coefficients(document)
+
+        self.assertEqual(coefficients[datetime(2026, 5, 1).date()], [82, 82])
+        self.assertEqual(coefficients[datetime(2026, 5, 17).date()], [98, 99])
+
+    def test_maree_info_coefficients_parser_reads_flat_calendar_text(self):
+        document = """
+        <h2>Coefficients des marees 2026 Brest</h2>
+        Mai 2026
+        01 V
+        Fete du travail
+        82 82
+        17 D
+        Pascal
+        98 99
+        Afficher les dates des coefficients de maree
+        120 95 70
+        """
+
+        coefficients = maree_info.parse_maree_info_coefficients(document)
+
+        self.assertEqual(coefficients[datetime(2026, 5, 1).date()], [82, 82])
+        self.assertEqual(coefficients[datetime(2026, 5, 17).date()], [98, 99])
 
     def test_data2lamer_storage_failure_disables_optional_storage(self):
         repo = Data2LamerForecastRepository(client=FailingClient())

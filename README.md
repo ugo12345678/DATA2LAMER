@@ -62,6 +62,7 @@ Sources activees sans abonnement payant :
 - MET Norway Locationforecast : source meteo independante sans cle API, avec `User-Agent` obligatoire.
 - Open-Meteo Marine Best Match : vagues, houle, SST, courants et niveau marin sans cle API.
 - Open-Meteo Marine par modele : Météo-France Wave/Currents/SST, DWD EWAM/GWAM, NOAA GFS Wave.
+- maree.info : coefficients de maree quotidiens pour le port de reference configure (`MAREE_INFO_PORT_ID`, Brest par defaut).
 - Copernicus Marine / CMEMS : optionnel, gratuit avec identifiants `CMEMS_USERNAME` et `CMEMS_PASSWORD`.
 
 Meteo-France Marine et SHOM ne sont pas integres pour l'instant afin d'eviter les dependances a cle payante ou a conditions d'acces plus lourdes.
@@ -104,7 +105,10 @@ DATA2LAMER_STORE_SOURCE_VALUES=false
 FORECAST_PUSH_TO_SUPABASE=false
 FORECAST_UPSERT_BATCH_SIZE=100
 FORECAST_THREAD_WORKERS=2
-FORECAST_SOURCES=open_meteo_weather,open_meteo_dwd_icon,open_meteo_marine,open_meteo_marine_meteofrance_wave,metno_locationforecast
+FORECAST_SOURCES=open_meteo_weather,open_meteo_dwd_icon,open_meteo_marine,open_meteo_marine_meteofrance_wave,metno_locationforecast,maree_info_tide_coefficients
+ENABLE_MAREE_INFO_TIDES=true
+MAREE_INFO_PORT_ID=82
+TIDE_COEFFICIENT_DAILY_REDUCER=max
 ENABLE_CMEMS=false
 ENABLE_METNO=true
 CMEMS_USERNAME

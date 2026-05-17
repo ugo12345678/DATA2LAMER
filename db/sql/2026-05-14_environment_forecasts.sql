@@ -61,6 +61,7 @@ create table if not exists public.environment_forecasts (
 
   water_temperature_c double precision,
   sea_level_height_m double precision,
+  tide_coefficient double precision,
   current_speed_ms double precision,
   current_direction_deg double precision,
   salinity_psu double precision,
@@ -114,6 +115,7 @@ alter table public.environment_forecasts
   add column if not exists secondary_swell_wave_direction_deg double precision,
   add column if not exists water_temperature_c double precision,
   add column if not exists sea_level_height_m double precision,
+  add column if not exists tide_coefficient double precision,
   add column if not exists current_speed_ms double precision,
   add column if not exists current_direction_deg double precision,
   add column if not exists salinity_psu double precision,
@@ -192,6 +194,7 @@ begin
         ef.swell_wave_direction_deg,
         ef.water_temperature_c,
         ef.sea_level_height_m,
+        ef.tide_coefficient,
         ef.current_speed_ms,
         ef.current_direction_deg,
         ef.salinity_psu,

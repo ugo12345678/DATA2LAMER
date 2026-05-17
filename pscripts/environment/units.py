@@ -94,6 +94,9 @@ def normalize_metric_value(metric: str, value: Any, unit: str | None) -> tuple[f
     if metric in {"pressure_msl", "surface_pressure"}:
         return number, "hPa"
 
+    if metric == "tide_coefficient":
+        return number, "coef"
+
     if metric == "salinity":
         return number, "psu"
 
