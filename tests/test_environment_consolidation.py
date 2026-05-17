@@ -8,8 +8,12 @@ from io import BytesIO
 
 from pscripts.environment.consolidation import consolidate_source_values
 from pscripts.environment.entities import SourceConfig, SourceValue
-from pscripts.environment.r2_storage import R2SourceValueArchive
-from pscripts.environment.repositories import Data2LamerForecastRepository
+from pscripts.environment.r2_storage import R2SourceValueArchive, R2TrainingDatasetArchive
+from pscripts.environment.repositories import (
+    Data2LamerForecastRepository,
+    Vu2LamerDiveTrainingDatasetRepository,
+    Vu2LamerForecastRepository,
+)
 from pscripts.environment.sync_environment_forecasts import build_sources
 from pscripts.environment.sources import maree_info
 from pscripts.environment.sources import open_meteo
@@ -26,6 +30,66 @@ class FailingTable:
 class FailingClient:
     def table(self, name):
         return FailingTable()
+
+
+class FakeResponse:
+    def __init__(self, data=None, count=None):
+        self.data = data or []
+        self.count = count
+
+
+class FakeForecastTable:
+    def __init__(self):
+        self.deleted_column = None
+        self.deleted_cutoff = None
+
+    def delete(self, **kwargs):
+        return self
+
+    def lt(self, column, value):
+        self.deleted_column = column
+        self.deleted_cutoff = value
+        return self
+
+    def execute(self):
+        return FakeResponse(count=3)
+
+
+class FakeForecastClient:
+    def __init__(self):
+        self.forecast_table = FakeForecastTable()
+
+    def table(self, name):
+        return self.forecast_table
+
+
+class FakeDatasetTable:
+    def __init__(self, rows):
+        self.rows = rows
+        self.range_start = 0
+        self.range_end = 0
+
+    def select(self, columns):
+        return self
+
+    def order(self, column):
+        return self
+
+    def range(self, start, end):
+        self.range_start = start
+        self.range_end = end
+        return self
+
+    def execute(self):
+        return FakeResponse(data=self.rows[self.range_start : self.range_end + 1])
+
+
+class FakeDatasetClient:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def table(self, name):
+        return FakeDatasetTable(self.rows)
 
 
 class FakeR2Client:
@@ -196,6 +260,33 @@ class EnvironmentConsolidationTest(unittest.TestCase):
         self.assertFalse(repo.available)
         self.assertIn("No space left on device", repo.disabled_reason)
 
+    def test_forecast_delete_expired_uses_explicit_cutoff(self):
+        client = FakeForecastClient()
+        repo = Vu2LamerForecastRepository(client=client)
+        cutoff = datetime(2026, 5, 14, 8, 12, tzinfo=timezone.utc)
+
+        deleted = repo.delete_expired(cutoff=cutoff)
+
+        self.assertEqual(deleted, 3)
+        self.assertEqual(client.forecast_table.deleted_column, "valid_time")
+        self.assertEqual(client.forecast_table.deleted_cutoff, "2026-05-14T08:12:00+00:00")
+
+    def test_training_dataset_repository_fetches_paginated_rows(self):
+        previous_batch_size = os.environ.get("TRAINING_DATASET_FETCH_BATCH_SIZE")
+        os.environ["TRAINING_DATASET_FETCH_BATCH_SIZE"] = "2"
+        rows = [{"outing_id": "1"}, {"outing_id": "2"}, {"outing_id": "3"}]
+
+        try:
+            repo = Vu2LamerDiveTrainingDatasetRepository(client=FakeDatasetClient(rows))
+            fetched = repo.fetch_rows()
+        finally:
+            if previous_batch_size is None:
+                os.environ.pop("TRAINING_DATASET_FETCH_BATCH_SIZE", None)
+            else:
+                os.environ["TRAINING_DATASET_FETCH_BATCH_SIZE"] = previous_batch_size
+
+        self.assertEqual(fetched, rows)
+
     def test_r2_archive_writes_source_values_as_gzipped_jsonl(self):
         fake_client = FakeR2Client()
         archive = R2SourceValueArchive(
@@ -263,6 +354,63 @@ class EnvironmentConsolidationTest(unittest.TestCase):
         self.assertEqual(keys, [key])
         self.assertEqual(values[0].spot_id, "spot-1")
         self.assertEqual(values[0].valid_time, run_time)
+
+    def test_r2_training_dataset_archive_writes_jsonl(self):
+        fake_client = FakeR2Client()
+        archive = R2TrainingDatasetArchive(
+            bucket="bucket",
+            endpoint_url="https://example.r2.cloudflarestorage.com",
+            access_key_id="key",
+            secret_access_key="secret",
+            prefix="test/training",
+        )
+        archive._client = fake_client
+        run_time = datetime(2026, 5, 14, 8, tzinfo=timezone.utc)
+
+        result = archive.merge_and_write_rows(
+            run_time=run_time,
+            rows=[
+                {
+                    "spot_id": "spot-1",
+                    "outing_id": "outing-1",
+                    "longitude": -4.49,
+                    "latitude": 48.39,
+                    "observed_visibility_m": 8,
+                }
+            ],
+        )
+
+        self.assertEqual(result["latest_key"], "test/training/latest.jsonl.gz")
+        self.assertEqual(result["run_key"], "test/training/runs/run_date=2026-05-14/run_hour=08/dataset_delta.jsonl.gz")
+        body = gzip.decompress(fake_client.objects[0]["Body"]).decode("utf-8")
+        self.assertIn('"observed_visibility_m":8', body)
+
+    def test_r2_training_dataset_archive_merges_by_outing_id(self):
+        fake_client = FakeR2Client()
+        archive = R2TrainingDatasetArchive(
+            bucket="bucket",
+            endpoint_url="https://example.r2.cloudflarestorage.com",
+            access_key_id="key",
+            secret_access_key="secret",
+            prefix="test/training",
+        )
+        archive._client = fake_client
+        run_time = datetime(2026, 5, 14, 8, tzinfo=timezone.utc)
+
+        archive.merge_and_write_rows(
+            run_time=run_time,
+            rows=[{"outing_id": "outing-1", "observed_visibility_m": 8}],
+        )
+        result = archive.merge_and_write_rows(
+            run_time=run_time,
+            rows=[{"outing_id": "outing-1", "observed_visibility_m": 12}],
+        )
+
+        latest_object = [item for item in fake_client.objects if item["Key"] == "test/training/latest.jsonl.gz"][-1]
+        latest_body = gzip.decompress(latest_object["Body"]).decode("utf-8").splitlines()
+        self.assertEqual(result["rows_count"], 1)
+        self.assertEqual(len(latest_body), 1)
+        self.assertIn('"observed_visibility_m":12', latest_body[0])
 
     def test_open_meteo_hourly_rate_limit_stops_without_retrying(self):
         previous_cooldown = os.environ.get("OPEN_METEO_HOURLY_RATE_LIMIT_COOLDOWN_SEC")

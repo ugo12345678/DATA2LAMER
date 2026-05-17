@@ -120,6 +120,25 @@ R2_SYNC_LOOKBACK_HOURS=12
 Par defaut, le workflow programme reste volontairement limite aux sources rapides pour eviter les timeouts GitHub Actions et les limites horaires Open-Meteo. Pour un run complet manuel, definir `FORECAST_SOURCES` avec les codes voulus et passer `ENABLE_CMEMS=true` si les datasets Copernicus doivent etre interroges.
 La publication Supabase est separee de la collecte : si Supabase timeoute, relancer `Environment Forecast Publish` suffit, sans refaire les appels meteo.
 
+Au lancement de `Environment Forecast Publish`, les lignes `environment_forecasts` dont `valid_time` est deja passe par rapport au debut du script sont supprimees.
+
+Le publish alimente aussi un dataset d'entrainement R2 si la vue applicative `dive_visibility_training_dataset` existe. Le dataset est cumulatif :
+
+- `training/dive_visibility/latest.jsonl.gz` contient l'etat dedoublonne par sortie (`outing_id` par defaut) ;
+- `training/dive_visibility/runs/run_date=YYYY-MM-DD/run_hour=HH/dataset_delta.jsonl.gz` conserve les lignes vues pendant ce publish ;
+- si une sortie est modifiee, la ligne avec le meme `outing_id` remplace l'ancienne dans `latest.jsonl.gz`.
+
+Variables utiles pour ce dataset :
+
+```text
+TRAINING_DATASET_EXPORT_ENABLED=true
+TRAINING_DATASET_EXPORT_REQUIRED=false
+TRAINING_DATASET_DEDUP_KEY=outing_id
+TRAINING_DATASET_FETCH_BATCH_SIZE=1000
+VU2LAMER_TRAINING_DATASET_VIEW=dive_visibility_training_dataset
+R2_TRAINING_DATASET_PREFIX=training/dive_visibility
+```
+
 ## Alertes
 
 Les alertes lisent maintenant `environment_forecasts` et evaluent les conditions heure par heure sur la date cible.

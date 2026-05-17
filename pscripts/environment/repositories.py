@@ -14,6 +14,7 @@ from pscripts.supabase_client import get_data2lamer_supabase, get_vu2lamer_supab
 
 
 APP_FORECAST_TABLE = os.environ.get("VU2LAMER_FORECAST_TABLE", "environment_forecasts")
+APP_TRAINING_DATASET_VIEW = os.environ.get("VU2LAMER_TRAINING_DATASET_VIEW", "dive_visibility_training_dataset")
 SOURCE_VALUES_TABLE = os.environ.get("DATA2LAMER_SOURCE_VALUES_TABLE", "forecast_source_values")
 SOURCES_TABLE = os.environ.get("DATA2LAMER_SOURCES_TABLE", "environment_sources")
 RUNS_TABLE = os.environ.get("DATA2LAMER_RUNS_TABLE", "environment_sync_runs")
@@ -34,9 +35,11 @@ class Vu2LamerForecastRepository:
         self.client = client or get_vu2lamer_supabase()
         self.batch_size = int(os.environ.get("FORECAST_UPSERT_BATCH_SIZE", "100"))
 
-    def delete_expired(self) -> int:
-        keep_past_hours = int(os.environ.get("FORECAST_KEEP_PAST_HOURS", "48"))
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=keep_past_hours)
+    def delete_expired(self, cutoff: datetime | None = None) -> int:
+        if cutoff is None:
+            keep_past_hours = int(os.environ.get("FORECAST_KEEP_PAST_HOURS", "48"))
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=keep_past_hours)
+        cutoff = cutoff.astimezone(timezone.utc)
         resp = (
             self.client.table(APP_FORECAST_TABLE)
             .delete(count=CountMethod.exact, returning=ReturnMethod.minimal)
@@ -73,6 +76,31 @@ class Vu2LamerForecastRepository:
             )
             self._upsert_batch(batch[:midpoint])
             self._upsert_batch(batch[midpoint:])
+
+
+class Vu2LamerDiveTrainingDatasetRepository:
+    def __init__(self, client: Client | None = None) -> None:
+        self.client = client or get_vu2lamer_supabase()
+        self.batch_size = int(os.environ.get("TRAINING_DATASET_FETCH_BATCH_SIZE", "1000"))
+
+    def fetch_rows(self) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        start = 0
+        while True:
+            end = start + self.batch_size - 1
+            resp = (
+                self.client.table(APP_TRAINING_DATASET_VIEW)
+                .select("*")
+                .order("observed_at")
+                .range(start, end)
+                .execute()
+            )
+            batch = resp.data or []
+            rows.extend(batch)
+            if len(batch) < self.batch_size:
+                break
+            start += self.batch_size
+        return rows
 
 
 class Data2LamerForecastRepository:

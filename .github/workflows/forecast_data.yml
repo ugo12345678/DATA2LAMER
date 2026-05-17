@@ -30,7 +30,7 @@ jobs:
       CMEMS_USERNAME: ${{ secrets.CMEMS_USERNAME }}
       CMEMS_PASSWORD: ${{ secrets.CMEMS_PASSWORD }}
 
-      FORECAST_DAYS: ${{ vars.FORECAST_DAYS || '5' }}
+      FORECAST_DAYS: ${{ vars.FORECAST_DAYS || '3' }}
       FORECAST_TARGET_TIMEZONE: Europe/Paris
       OPEN_METEO_BATCH_SIZE: ${{ vars.OPEN_METEO_BATCH_SIZE || '50' }}
       APP_PROVENANCE_MODE: compact

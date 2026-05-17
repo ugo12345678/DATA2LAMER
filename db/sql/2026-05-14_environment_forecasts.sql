@@ -6,6 +6,8 @@ begin;
 create extension if not exists pgcrypto;
 
 drop view if exists public.dive_visibility_dataset;
+drop view if exists public.dive_visibility_dataset_hourly;
+drop view if exists public.dive_visibility_training_dataset;
 drop table if exists public.forecast_predictions;
 
 create or replace function public.set_updated_at()
@@ -158,16 +160,199 @@ comment on column public.environment_forecasts.provenance is
   'Per-metric source trace used for consolidation: source codes, values, units, model/grid metadata and run ids.';
 
 do $$
+declare
+  outing_time_col text;
+  outing_updated_col text;
+  visibility_col text;
+  image_col text;
+  spot_lat_col text;
+  spot_lon_col text;
+  spot_sector_col text;
+  sector_rel text;
+  sector_lat_col text;
+  sector_lon_col text;
+  sector_id_expr text;
+  sector_join text := '';
+  latitude_expr text;
+  longitude_expr text;
+  observed_at_expr text;
+  outing_updated_expr text;
+  visibility_expr text;
+  image_expr text;
 begin
-  if to_regclass('public.dive_outings') is not null then
+  if to_regclass('public.dive_outings') is not null
+     and to_regclass('public.spots') is not null
+     and exists (
+       select 1
+       from information_schema.columns
+       where table_schema = 'public'
+         and table_name = 'dive_outings'
+         and column_name = 'spot_id'
+     ) then
+    select column_name into outing_time_col
+    from unnest(array['observed_at', 'dive_at', 'started_at', 'start_time', 'outing_at', 'outing_date']) as candidate(column_name)
+    where exists (
+      select 1
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'dive_outings'
+        and column_name = candidate.column_name
+    )
+    limit 1;
+
+    select column_name into visibility_col
+    from unnest(array['observed_visibility_m', 'visibility_m', 'water_visibility_m', 'visibility']) as candidate(column_name)
+    where exists (
+      select 1
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'dive_outings'
+        and column_name = candidate.column_name
+    )
+    limit 1;
+
+    select column_name into outing_updated_col
+    from unnest(array['updated_at', 'modified_at', 'last_modified_at']) as candidate(column_name)
+    where exists (
+      select 1
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'dive_outings'
+        and column_name = candidate.column_name
+    )
+    limit 1;
+
+    select column_name into image_col
+    from unnest(array['visibility_image_url', 'image_visibility_url', 'visibility_image', 'image_visibility', 'photo_url']) as candidate(column_name)
+    where exists (
+      select 1
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'dive_outings'
+        and column_name = candidate.column_name
+    )
+    limit 1;
+
+    select column_name into spot_lat_col
+    from unnest(array['latitude', 'lat']) as candidate(column_name)
+    where exists (
+      select 1
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'spots'
+        and column_name = candidate.column_name
+    )
+    limit 1;
+
+    select column_name into spot_lon_col
+    from unnest(array['longitude', 'lon', 'lng']) as candidate(column_name)
+    where exists (
+      select 1
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'spots'
+        and column_name = candidate.column_name
+    )
+    limit 1;
+
+    select column_name into spot_sector_col
+    from unnest(array['sector_id', 'zone_id']) as candidate(column_name)
+    where exists (
+      select 1
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'spots'
+        and column_name = candidate.column_name
+    )
+    limit 1;
+
+    select rel_name into sector_rel
+    from unnest(array['sectors', 'spot_sectors', 'dive_sectors']) as candidate(rel_name)
+    where to_regclass('public.' || candidate.rel_name) is not null
+    limit 1;
+
+    if sector_rel is not null then
+      select column_name into sector_lat_col
+      from unnest(array['latitude', 'lat']) as candidate(column_name)
+      where exists (
+        select 1
+        from information_schema.columns
+        where table_schema = 'public'
+          and table_name = sector_rel
+          and column_name = candidate.column_name
+      )
+      limit 1;
+
+      select column_name into sector_lon_col
+      from unnest(array['longitude', 'lon', 'lng']) as candidate(column_name)
+      where exists (
+        select 1
+        from information_schema.columns
+        where table_schema = 'public'
+          and table_name = sector_rel
+          and column_name = candidate.column_name
+      )
+      limit 1;
+    end if;
+
+    if outing_time_col is not null and visibility_col is not null then
+      observed_at_expr := format('o.%I::timestamptz', outing_time_col);
+      outing_updated_expr := case
+        when outing_updated_col is not null then format('o.%I::timestamptz', outing_updated_col)
+        else 'null::timestamptz'
+      end;
+      visibility_expr := format('o.%I::double precision', visibility_col);
+      image_expr := case
+        when image_col is not null then format('o.%I::text', image_col)
+        else 'null::text'
+      end;
+
+      if exists (
+        select 1
+        from information_schema.columns
+        where table_schema = 'public'
+          and table_name = 'dive_outings'
+          and column_name = 'sector_id'
+      ) then
+        sector_id_expr := 'o.sector_id::text';
+        if sector_rel is not null then
+          sector_join := format('left join public.%I sec on sec.id = o.sector_id', sector_rel);
+        end if;
+      elsif spot_sector_col is not null then
+        sector_id_expr := format('s.%I::text', spot_sector_col);
+        if sector_rel is not null then
+          sector_join := format('left join public.%I sec on sec.id = s.%I', sector_rel, spot_sector_col);
+        end if;
+      else
+        sector_id_expr := 'null::text';
+      end if;
+
+      latitude_expr := case
+        when spot_lat_col is not null and sector_lat_col is not null then format('coalesce(s.%I, sec.%I)::double precision', spot_lat_col, sector_lat_col)
+        when spot_lat_col is not null then format('s.%I::double precision', spot_lat_col)
+        when sector_lat_col is not null then format('sec.%I::double precision', sector_lat_col)
+        else 'null::double precision'
+      end;
+
+      longitude_expr := case
+        when spot_lon_col is not null and sector_lon_col is not null then format('coalesce(s.%I, sec.%I)::double precision', spot_lon_col, sector_lon_col)
+        when spot_lon_col is not null then format('s.%I::double precision', spot_lon_col)
+        when sector_lon_col is not null then format('sec.%I::double precision', sector_lon_col)
+        else 'null::double precision'
+      end;
+
     execute $view$
-      create or replace view public.dive_visibility_dataset_hourly as
+      create or replace view public.dive_visibility_training_dataset as
       select
-        o.id as outing_id,
-        o.spot_id,
-        ds.name as spot_name,
-        o.outing_date,
-        o.observed_visibility_m,
+        o.id::text as outing_id,
+        o.spot_id::text as spot_id,
+        $view$ || sector_id_expr || $view$ as sector_id,
+        $view$ || longitude_expr || $view$ as longitude,
+        $view$ || latitude_expr || $view$ as latitude,
+        $view$ || observed_at_expr || $view$ as observed_at,
+        $view$ || outing_updated_expr || $view$ as outing_updated_at,
+        $view$ || visibility_expr || $view$ as observed_visibility_m,
+        $view$ || image_expr || $view$ as visibility_image_url,
         ef.valid_time,
         ef.forecast_run_at,
         ef.forecast_horizon_hours,
@@ -201,12 +386,24 @@ begin
         ef.chlorophyll_mg_m3,
         ef.light_attenuation_m1
       from public.dive_outings o
-      left join public.spots ds
-        on ds.id = o.spot_id
-      left join public.environment_forecasts ef
+      left join public.spots s
+        on s.id = o.spot_id
+      $view$ || sector_join || $view$
+      join public.environment_forecasts ef
         on ef.spot_id = o.spot_id
-       and ef.target_date = o.outing_date
+       and date_trunc('hour', ef.valid_time) = date_trunc('hour', $view$ || observed_at_expr || $view$)
+      where $view$ || observed_at_expr || $view$ is not null
+        and $view$ || visibility_expr || $view$ is not null
+        and $view$ || latitude_expr || $view$ is not null
+        and $view$ || longitude_expr || $view$ is not null
     $view$;
+
+      execute $view$
+        create or replace view public.dive_visibility_dataset_hourly as
+        select *
+        from public.dive_visibility_training_dataset
+      $view$;
+    end if;
   end if;
 end;
 $$;
