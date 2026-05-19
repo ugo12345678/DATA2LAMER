@@ -780,8 +780,8 @@ class EnvironmentConsolidationTest(unittest.TestCase):
                 os.environ["CMEMS_PASSWORD"] = previous_password
 
         self.assertEqual(calls[0]["variables"], ["chl", "phyc"])
-        self.assertEqual(calls[0]["minimum_depth"], 0.0)
-        self.assertEqual(calls[0]["maximum_depth"], 0.0)
+        self.assertEqual(calls[0]["minimum_depth"], 0.5)
+        self.assertEqual(calls[0]["maximum_depth"], 0.5)
         self.assertEqual(ds.renamed, {"latitude": "lat", "longitude": "lon"})
         self.assertEqual(ds.indexed, {"depth": 0})
 
@@ -863,6 +863,7 @@ class EnvironmentConsolidationTest(unittest.TestCase):
 
         forecast_data = workflow_paths[0].read_text(encoding="utf-8")
         self.assertIn("CMEMS_ALLOW_UNFILTERED_FALLBACK: ${{ vars.CMEMS_ALLOW_UNFILTERED_FALLBACK || 'false' }}", forecast_data)
+        self.assertIn("CMEMS_SURFACE_DEPTH_M: ${{ vars.CMEMS_SURFACE_DEPTH_M || '0.5' }}", forecast_data)
         self.assertIn("CMEMS_IBI_PHY_VARIABLES: ${{ vars.CMEMS_IBI_PHY_VARIABLES || 'thetao,so,uo,vo' }}", forecast_data)
         self.assertIn("CMEMS_IBI_BGC_VARIABLES: ${{ vars.CMEMS_IBI_BGC_VARIABLES || 'chl,phyc,nppv,zeu' }}", forecast_data)
 

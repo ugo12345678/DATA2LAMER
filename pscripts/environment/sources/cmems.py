@@ -14,6 +14,7 @@ from pscripts.environment.units import normalize_metric_value, to_float
 
 
 SPOT_MARGIN_DEG = float(os.environ.get("SPOT_MARGIN_DEG", "0.03"))
+DEFAULT_SURFACE_DEPTH_M = "0.5"
 
 
 def cmems_enabled() -> bool:
@@ -78,8 +79,9 @@ def _open_dataset(
     if variables:
         request_kwargs["variables"] = variables
     if select_surface and os.environ.get("CMEMS_SUBSET_SURFACE_DEPTH", "true").lower() in {"1", "true", "yes"}:
-        request_kwargs["minimum_depth"] = float(os.environ.get("CMEMS_SURFACE_DEPTH_M", "0"))
-        request_kwargs["maximum_depth"] = float(os.environ.get("CMEMS_SURFACE_DEPTH_M", "0"))
+        surface_depth = float(os.environ.get("CMEMS_SURFACE_DEPTH_M", DEFAULT_SURFACE_DEPTH_M))
+        request_kwargs["minimum_depth"] = surface_depth
+        request_kwargs["maximum_depth"] = surface_depth
 
     print(
         "[INFO] CMEMS opening dataset "

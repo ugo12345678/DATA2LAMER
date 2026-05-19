@@ -43,12 +43,13 @@ jobs:
       CMEMS_ALLOW_UNFILTERED_FALLBACK: ${{ vars.CMEMS_ALLOW_UNFILTERED_FALLBACK || 'false' }}
       CMEMS_LOAD_SUBSET_IN_MEMORY: ${{ vars.CMEMS_LOAD_SUBSET_IN_MEMORY || 'true' }}
       CMEMS_SUBSET_SURFACE_DEPTH: ${{ vars.CMEMS_SUBSET_SURFACE_DEPTH || 'true' }}
+      CMEMS_SURFACE_DEPTH_M: ${{ vars.CMEMS_SURFACE_DEPTH_M || '0.5' }}
       CMEMS_IBI_PHY_VARIABLES: ${{ vars.CMEMS_IBI_PHY_VARIABLES || 'thetao,so,uo,vo' }}
       CMEMS_IBI_BGC_VARIABLES: ${{ vars.CMEMS_IBI_BGC_VARIABLES || 'chl,phyc,nppv,zeu' }}
       ENABLE_METNO: ${{ vars.ENABLE_METNO || 'true' }}
-      FORECAST_SOURCES: ${{ vars.FORECAST_SOURCES || 'open_meteo_weather,open_meteo_dwd_icon,open_meteo_marine,open_meteo_marine_meteofrance_wave,metno_locationforecast,shom_tide_coefficients,cmems_ibi_phy,cmems_ibi_bgc' }}
+      FORECAST_SOURCES: ${{ vars.FORECAST_SOURCES || 'open_meteo_weather,open_meteo_dwd_icon,open_meteo_marine,open_meteo_marine_meteofrance_wave,metno_locationforecast,cmems_ibi_phy,cmems_ibi_bgc' }}
       METNO_USER_AGENT: ${{ vars.METNO_USER_AGENT || 'DATA2LAMER/1.0 github-actions' }}
-      ENABLE_SHOM_TIDES: ${{ vars.ENABLE_SHOM_TIDES || 'true' }}
+      ENABLE_SHOM_TIDES: ${{ vars.ENABLE_SHOM_TIDES || 'false' }}
       SHOM_TIDE_HARBOR: ${{ vars.SHOM_TIDE_HARBOR || 'BREST' }}
       SHOM_TIDE_UTC: ${{ vars.SHOM_TIDE_UTC || '0' }}
       ENABLE_MAREE_INFO_TIDES: ${{ vars.ENABLE_MAREE_INFO_TIDES || 'false' }}
