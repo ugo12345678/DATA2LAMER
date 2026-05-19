@@ -633,8 +633,8 @@ class EnvironmentConsolidationTest(unittest.TestCase):
 
         self.assertEqual(source_variables["cmems_ibi_wav"], ["VHM0", "VTM10", "VMDR"])
         self.assertEqual(source_variables["cmems_ibi_phy"], ["thetao", "so", "uo", "vo"])
-        self.assertEqual(source_variables["cmems_ibi_bgc"], ["chl", "phyc", "nppv", "zeu"])
-        self.assertTrue(all(variables and len(variables) <= 4 for variables in source_variables.values()))
+        self.assertEqual(source_variables["cmems_ibi_bgc"], ["chl", "phyc", "nppv", "zeu", "kd", "kd490"])
+        self.assertTrue(all(variables and len(variables) <= 6 for variables in source_variables.values()))
 
     def test_cmems_fetch_does_not_retry_unfiltered_dataset_by_default(self):
         previous_open_dataset = cmems._open_dataset
@@ -670,7 +670,7 @@ class EnvironmentConsolidationTest(unittest.TestCase):
             else:
                 os.environ["CMEMS_ALLOW_UNFILTERED_FALLBACK"] = previous_fallback
 
-        self.assertEqual(calls, [["chl", "phyc", "nppv", "zeu"]])
+        self.assertEqual(calls, [["chl", "phyc", "nppv", "zeu", "kd", "kd490"]])
 
     def test_cmems_fetch_unfiltered_retry_is_opt_in(self):
         class FakeDataset:
@@ -714,7 +714,33 @@ class EnvironmentConsolidationTest(unittest.TestCase):
                 os.environ["CMEMS_ALLOW_UNFILTERED_FALLBACK"] = previous_fallback
 
         self.assertEqual(values, [])
-        self.assertEqual(calls, [["chl", "phyc", "nppv", "zeu"], None])
+        self.assertEqual(calls, [["chl", "phyc", "nppv", "zeu", "kd", "kd490"], None])
+
+    def test_cmems_daily_values_are_repeated_hourly_inside_forecast_window(self):
+        previous_days = os.environ.get("FORECAST_DAYS")
+        os.environ["FORECAST_DAYS"] = "2"
+        run_time = datetime(2026, 5, 19, 16, 29, tzinfo=timezone.utc)
+        valid_time = datetime(2026, 5, 19, 0, tzinfo=timezone.utc)
+
+        try:
+            times = cmems._expanded_valid_times(valid_time, 1440, run_time)
+        finally:
+            if previous_days is None:
+                os.environ.pop("FORECAST_DAYS", None)
+            else:
+                os.environ["FORECAST_DAYS"] = previous_days
+
+        self.assertEqual(times[0], datetime(2026, 5, 19, 16, tzinfo=timezone.utc))
+        self.assertEqual(times[-1], datetime(2026, 5, 19, 23, tzinfo=timezone.utc))
+        self.assertEqual(len(times), 8)
+
+    def test_cmems_hourly_values_keep_source_timestamp_only(self):
+        run_time = datetime(2026, 5, 19, 16, tzinfo=timezone.utc)
+        valid_time = datetime(2026, 5, 19, 18, tzinfo=timezone.utc)
+
+        times = cmems._expanded_valid_times(valid_time, 60, run_time)
+
+        self.assertEqual(times, [valid_time])
 
     def test_cmems_open_dataset_limits_variables_and_surface_depth(self):
         class FakeDataset:
@@ -865,7 +891,7 @@ class EnvironmentConsolidationTest(unittest.TestCase):
         self.assertIn("CMEMS_ALLOW_UNFILTERED_FALLBACK: ${{ vars.CMEMS_ALLOW_UNFILTERED_FALLBACK || 'false' }}", forecast_data)
         self.assertIn("CMEMS_SURFACE_DEPTH_M: ${{ vars.CMEMS_SURFACE_DEPTH_M || '0.5' }}", forecast_data)
         self.assertIn("CMEMS_IBI_PHY_VARIABLES: ${{ vars.CMEMS_IBI_PHY_VARIABLES || 'thetao,so,uo,vo' }}", forecast_data)
-        self.assertIn("CMEMS_IBI_BGC_VARIABLES: ${{ vars.CMEMS_IBI_BGC_VARIABLES || 'chl,phyc,nppv,zeu' }}", forecast_data)
+        self.assertIn("CMEMS_IBI_BGC_VARIABLES: ${{ vars.CMEMS_IBI_BGC_VARIABLES || 'chl,phyc,nppv,zeu,kd,kd490' }}", forecast_data)
 
     def test_environment_forecast_column_counts_counts_non_null_values(self):
         rows = [

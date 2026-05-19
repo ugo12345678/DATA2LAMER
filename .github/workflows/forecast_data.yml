@@ -45,7 +45,7 @@ jobs:
       CMEMS_SUBSET_SURFACE_DEPTH: ${{ vars.CMEMS_SUBSET_SURFACE_DEPTH || 'true' }}
       CMEMS_SURFACE_DEPTH_M: ${{ vars.CMEMS_SURFACE_DEPTH_M || '0.5' }}
       CMEMS_IBI_PHY_VARIABLES: ${{ vars.CMEMS_IBI_PHY_VARIABLES || 'thetao,so,uo,vo' }}
-      CMEMS_IBI_BGC_VARIABLES: ${{ vars.CMEMS_IBI_BGC_VARIABLES || 'chl,phyc,nppv,zeu' }}
+      CMEMS_IBI_BGC_VARIABLES: ${{ vars.CMEMS_IBI_BGC_VARIABLES || 'chl,phyc,nppv,zeu,kd,kd490' }}
       ENABLE_METNO: ${{ vars.ENABLE_METNO || 'true' }}
       FORECAST_SOURCES: ${{ vars.FORECAST_SOURCES || 'open_meteo_weather,open_meteo_dwd_icon,open_meteo_marine,open_meteo_marine_meteofrance_wave,metno_locationforecast,cmems_ibi_phy,cmems_ibi_bgc' }}
       METNO_USER_AGENT: ${{ vars.METNO_USER_AGENT || 'DATA2LAMER/1.0 github-actions' }}

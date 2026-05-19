@@ -145,6 +145,25 @@ def _dataset_resolution_minutes(ds) -> int | None:
     return int(delta.total_seconds() // 60)
 
 
+def _expanded_valid_times(valid_time: datetime, resolution_minutes: int | None, run_time: datetime) -> list[datetime]:
+    if resolution_minutes is None or resolution_minutes < 1440:
+        return [valid_time]
+
+    window_start = floor_hour(run_time)
+    window_end = run_time + timedelta(days=int(os.environ.get("FORECAST_DAYS", "7")))
+    period_start = max(valid_time, window_start)
+    period_end = min(valid_time + timedelta(minutes=resolution_minutes), window_end)
+    if period_start >= period_end:
+        return []
+
+    times: list[datetime] = []
+    current = period_start
+    while current < period_end:
+        times.append(current)
+        current += timedelta(hours=1)
+    return times
+
+
 class CmemsSource(ForecastSource):
     dataset_id: str
     variable_map: dict[str, list[str]]
@@ -219,22 +238,23 @@ class CmemsSource(ForecastSource):
                 if normalized is None:
                     continue
 
-                rows.append(
-                    SourceValue(
-                        spot_id=str(spot["spot_id"]),
-                        source_code=self.config.code,
-                        valid_time=valid_time,
-                        metric=metric,
-                        value=normalized,
-                        unit=unit,
-                        raw_variable=metric,
-                        fetched_at=run_time,
-                        model=self.dataset_id,
-                        resolution_minutes=resolution,
-                        grid_lat=grid_lat,
-                        grid_lon=grid_lon,
+                for expanded_time in _expanded_valid_times(valid_time, resolution, run_time):
+                    rows.append(
+                        SourceValue(
+                            spot_id=str(spot["spot_id"]),
+                            source_code=self.config.code,
+                            valid_time=expanded_time,
+                            metric=metric,
+                            value=normalized,
+                            unit=unit,
+                            raw_variable=metric,
+                            fetched_at=run_time,
+                            model=self.dataset_id,
+                            resolution_minutes=resolution,
+                            grid_lat=grid_lat,
+                            grid_lon=grid_lon,
+                        )
                     )
-                )
 
         return rows
 
@@ -324,7 +344,7 @@ class CmemsBgcSource(CmemsSource):
         "euphotic_depth": ["zeu", "ZEU", "euphotic_depth"],
         "light_attenuation": ["kd", "kd490", "KD490", "att", "light_attenuation", "mldr10_1"],
     }
-    requested_variables = ["chl", "phyc", "nppv", "zeu"]
+    requested_variables = ["chl", "phyc", "nppv", "zeu", "kd", "kd490"]
     default_units = {
         "chlorophyll": "mg/m3",
         "phytoplankton_carbon": "mmol/m3",
