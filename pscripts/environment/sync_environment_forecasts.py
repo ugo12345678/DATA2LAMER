@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 
 from pscripts.environment.consolidation import consolidate_source_values
 from pscripts.environment.entities import SourceValue
+from pscripts.environment.metrics import METRICS
 from pscripts.environment.r2_storage import R2SourceValueArchive
 from pscripts.environment.repositories import Data2LamerForecastRepository, Vu2LamerForecastRepository
 from pscripts.environment.sources.base import ForecastSource
@@ -28,6 +29,48 @@ from pscripts.environment.sources.open_meteo import (
 )
 from pscripts.environment.timeutils import utc_now_hour
 from pscripts.spots import load_spots
+
+
+ENVIRONMENT_FORECAST_BASE_COLUMNS = [
+    "spot_id",
+    "valid_time",
+    "target_date",
+    "forecast_run_at",
+    "forecast_horizon_hours",
+    "source_count",
+    "sources",
+    "provenance",
+]
+
+
+def _env_enabled(name: str, default: str = "false") -> bool:
+    return os.environ.get(name, default).lower() in {"1", "true", "yes"}
+
+
+def environment_forecast_columns() -> list[str]:
+    metric_columns = []
+    for spec in METRICS.values():
+        if spec.column not in metric_columns:
+            metric_columns.append(spec.column)
+    return [*ENVIRONMENT_FORECAST_BASE_COLUMNS, *metric_columns]
+
+
+def environment_forecast_column_counts(rows: list[dict[str, object]]) -> dict[str, int]:
+    counts = {column: 0 for column in environment_forecast_columns()}
+    for row in rows:
+        for column in counts:
+            if row.get(column) is not None:
+                counts[column] += 1
+    return counts
+
+
+def log_environment_forecast_column_counts(rows: list[dict[str, object]]) -> None:
+    counts = environment_forecast_column_counts(rows)
+    total_rows = len(rows)
+    print(f"[INFO] environment_forecasts column coverage: rows={total_rows}")
+    for column, count in counts.items():
+        ratio = (count / total_rows * 100.0) if total_rows else 0.0
+        print(f"[INFO]   {column}: {count}/{total_rows} ({ratio:.1f}%)")
 
 
 def build_sources() -> list[ForecastSource]:
@@ -151,14 +194,20 @@ def main() -> None:
             + ", ".join(r2_archive.missing_settings())
         )
 
-    push_to_supabase = os.environ.get("FORECAST_PUSH_TO_SUPABASE", "true").lower() in {"1", "true", "yes"}
+    push_to_supabase = _env_enabled("FORECAST_PUSH_TO_SUPABASE", "true")
+    log_column_counts = _env_enabled("FORECAST_LOG_COLUMN_COUNTS", "true")
 
     values, run_time = fetch_source_values(
         sources,
         data_repo,
         r2_archive,
-        collect_values=push_to_supabase,
+        collect_values=push_to_supabase or log_column_counts,
     )
+    consolidated_rows: list[dict[str, object]] | None = None
+    if log_column_counts:
+        consolidated_rows = consolidate_source_values(values, run_time) if values else []
+        log_environment_forecast_column_counts(consolidated_rows)
+
     if not push_to_supabase:
         print("[OK] Source values archived; VU2LAMER Supabase publication skipped.")
         return
@@ -166,7 +215,8 @@ def main() -> None:
     if not values:
         raise RuntimeError("No forecast source values were fetched.")
 
-    consolidated_rows = consolidate_source_values(values, run_time)
+    if consolidated_rows is None:
+        consolidated_rows = consolidate_source_values(values, run_time)
     if not consolidated_rows:
         raise RuntimeError("No consolidated forecast rows were produced.")
 

@@ -17,7 +17,7 @@ from pscripts.environment.repositories import (
     Vu2LamerDiveTrainingDatasetRepository,
     Vu2LamerForecastRepository,
 )
-from pscripts.environment.sync_environment_forecasts import build_sources
+from pscripts.environment.sync_environment_forecasts import build_sources, environment_forecast_column_counts
 from pscripts.environment.sources import cmems
 from pscripts.environment.sources import maree_info
 from pscripts.environment.sources import open_meteo
@@ -843,6 +843,32 @@ class EnvironmentConsolidationTest(unittest.TestCase):
                 os.environ["ENABLE_SHOM_TIDES"] = previous_shom
 
         self.assertEqual(source_codes, ["open_meteo_weather", "open_meteo_marine"])
+
+    def test_environment_forecast_column_counts_counts_non_null_values(self):
+        rows = [
+            {
+                "spot_id": "spot-1",
+                "valid_time": "2026-05-14T08:00:00+00:00",
+                "wind_speed_ms": 4.2,
+                "wave_height_m": None,
+                "chlorophyll_mg_m3": 1.1,
+            },
+            {
+                "spot_id": "spot-2",
+                "valid_time": "2026-05-14T08:00:00+00:00",
+                "wind_speed_ms": 5.3,
+                "wave_height_m": 0.8,
+            },
+        ]
+
+        counts = environment_forecast_column_counts(rows)
+
+        self.assertEqual(counts["spot_id"], 2)
+        self.assertEqual(counts["valid_time"], 2)
+        self.assertEqual(counts["wind_speed_ms"], 2)
+        self.assertEqual(counts["wave_height_m"], 1)
+        self.assertEqual(counts["chlorophyll_mg_m3"], 1)
+        self.assertEqual(counts["salinity_psu"], 0)
 
 
 if __name__ == "__main__":
