@@ -716,6 +716,42 @@ class EnvironmentConsolidationTest(unittest.TestCase):
         self.assertEqual(values, [])
         self.assertEqual(calls, [["chl", "phyc", "nppv", "zeu", "kd", "kd490"], None])
 
+    def test_cmems_variable_filter_retries_without_unavailable_variable(self):
+        class FakeDataset:
+            coords = {}
+            data_vars = {}
+
+        calls = []
+
+        def fake_open_dataset(dataset_id, spots, run_time, select_surface, variables=None):
+            calls.append(variables)
+            if variables and "kd" in variables:
+                raise ValueError("The variable 'kd' is neither a variable or a standard name in the dataset.")
+            return FakeDataset()
+
+        previous_open_dataset = cmems._open_dataset
+        cmems._open_dataset = fake_open_dataset
+
+        try:
+            ds = cmems._open_dataset_with_variable_filter(
+                "cmems_mod_ibi_bgc_anfc_0.027deg-3D_P1D-m",
+                __import__("pandas").DataFrame(),
+                datetime(2026, 5, 14, tzinfo=timezone.utc),
+                True,
+                ["chl", "phyc", "nppv", "zeu", "kd", "kd490"],
+            )
+        finally:
+            cmems._open_dataset = previous_open_dataset
+
+        self.assertIsInstance(ds, FakeDataset)
+        self.assertEqual(
+            calls,
+            [
+                ["chl", "phyc", "nppv", "zeu", "kd", "kd490"],
+                ["chl", "phyc", "nppv", "zeu", "kd490"],
+            ],
+        )
+
     def test_cmems_daily_values_are_repeated_hourly_inside_forecast_window(self):
         previous_days = os.environ.get("FORECAST_DAYS")
         os.environ["FORECAST_DAYS"] = "2"

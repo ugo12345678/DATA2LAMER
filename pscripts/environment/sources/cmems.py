@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import os
+import re
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -15,6 +16,7 @@ from pscripts.environment.units import normalize_metric_value, to_float
 
 SPOT_MARGIN_DEG = float(os.environ.get("SPOT_MARGIN_DEG", "0.03"))
 DEFAULT_SURFACE_DEPTH_M = "0.5"
+INVALID_VARIABLE_RE = re.compile(r"The variable '([^']+)' is neither")
 
 
 def cmems_enabled() -> bool:
@@ -145,6 +147,33 @@ def _dataset_resolution_minutes(ds) -> int | None:
     return int(delta.total_seconds() // 60)
 
 
+def _invalid_variable_name(exc: Exception) -> str | None:
+    match = INVALID_VARIABLE_RE.search(str(exc))
+    return match.group(1) if match else None
+
+
+def _open_dataset_with_variable_filter(
+    dataset_id: str,
+    spots: pd.DataFrame,
+    run_time: datetime,
+    select_surface: bool,
+    variables: list[str] | None,
+):
+    remaining_variables = list(variables or [])
+    while True:
+        try:
+            return _open_dataset(dataset_id, spots, run_time, select_surface, remaining_variables or None)
+        except Exception as exc:
+            invalid_variable = _invalid_variable_name(exc)
+            if not invalid_variable or invalid_variable not in remaining_variables or len(remaining_variables) <= 1:
+                raise
+            remaining_variables = [variable for variable in remaining_variables if variable != invalid_variable]
+            print(
+                f"[WARN] CMEMS variable {invalid_variable!r} is unavailable in {dataset_id}; "
+                f"retrying with variables={','.join(remaining_variables)}."
+            )
+
+
 def _expanded_valid_times(valid_time: datetime, resolution_minutes: int | None, run_time: datetime) -> list[datetime]:
     if resolution_minutes is None or resolution_minutes < 1440:
         return [valid_time]
@@ -178,7 +207,13 @@ class CmemsSource(ForecastSource):
 
         requested_variables = self._requested_variables()
         try:
-            ds = _open_dataset(self.dataset_id, spots, run_time, self.select_surface, requested_variables)
+            ds = _open_dataset_with_variable_filter(
+                self.dataset_id,
+                spots,
+                run_time,
+                self.select_surface,
+                requested_variables,
+            )
         except Exception:
             allow_unfiltered_fallback = (
                 os.environ.get("CMEMS_ALLOW_UNFILTERED_FALLBACK", "false").lower() in {"1", "true", "yes"}
