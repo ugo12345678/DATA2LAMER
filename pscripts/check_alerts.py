@@ -81,6 +81,16 @@ CONDITION_FIELD_MAP = {
     "salinity": "salinity_psu",
     "chlorophylle": "chlorophyll_mg_m3",
     "chlorophyll": "chlorophyll_mg_m3",
+    "carbone phytoplancton": "phytoplankton_carbon_mmol_m3",
+    "phytoplankton_carbon": "phytoplankton_carbon_mmol_m3",
+    "production primaire": "net_primary_production_mg_m3_day",
+    "net_primary_production": "net_primary_production_mg_m3_day",
+    "profondeur euphotique": "euphotic_depth_m",
+    "euphotic_depth": "euphotic_depth_m",
+    "risque bloom algal": "algal_bloom_risk",
+    "bloom algal": "algal_bloom_risk",
+    "efflorescence planctonique": "algal_bloom_risk",
+    "algal_bloom_risk": "algal_bloom_risk",
 }
 
 FORECAST_SELECT_COLUMNS = [
@@ -116,6 +126,10 @@ FORECAST_SELECT_COLUMNS = [
     "current_direction_deg",
     "salinity_psu",
     "chlorophyll_mg_m3",
+    "phytoplankton_carbon_mmol_m3",
+    "net_primary_production_mg_m3_day",
+    "euphotic_depth_m",
+    "algal_bloom_risk",
     "light_attenuation_m1",
 ]
 

@@ -62,10 +62,11 @@ Sources activees sans abonnement payant :
 - MET Norway Locationforecast : source meteo independante sans cle API, avec `User-Agent` obligatoire.
 - Open-Meteo Marine Best Match : vagues, houle, SST, courants et niveau marin sans cle API.
 - Open-Meteo Marine par modele : Météo-France Wave/Currents/SST, DWD EWAM/GWAM, NOAA GFS Wave.
-- maree.info : coefficients de maree quotidiens pour le port de reference configure (`MAREE_INFO_PORT_ID`, Brest par defaut).
+- SHOM horaires des marees : coefficients de maree quotidiens pour le port de reference configure (`SHOM_TIDE_HARBOR=BREST` par defaut), via un flux JSON du portail plutot que du scraping HTML.
+- maree.info : source historique optionnelle, desactivee par defaut.
 - Copernicus Marine / CMEMS : optionnel, gratuit avec identifiants `CMEMS_USERNAME` et `CMEMS_PASSWORD`.
 
-Meteo-France Marine et SHOM ne sont pas integres pour l'instant afin d'eviter les dependances a cle payante ou a conditions d'acces plus lourdes.
+Les API payantes SHOM de prediction avancee et Meteo-France Marine direct ne sont pas integrees afin d'eviter les dependances a cle payante ou a conditions d'acces plus lourdes.
 
 ## Synchronisation
 
@@ -105,19 +106,31 @@ DATA2LAMER_STORE_SOURCE_VALUES=false
 FORECAST_PUSH_TO_SUPABASE=false
 FORECAST_UPSERT_BATCH_SIZE=100
 FORECAST_THREAD_WORKERS=2
-FORECAST_SOURCES=open_meteo_weather,open_meteo_dwd_icon,open_meteo_marine,open_meteo_marine_meteofrance_wave,metno_locationforecast,maree_info_tide_coefficients
-ENABLE_MAREE_INFO_TIDES=true
+FORECAST_SOURCES=open_meteo_weather,open_meteo_dwd_icon,open_meteo_marine,open_meteo_marine_meteofrance_wave,metno_locationforecast,shom_tide_coefficients
+ENABLE_SHOM_TIDES=true
+SHOM_TIDE_BASE_URL=https://services.data.shom.fr/b2q8lrcdl4s04cbabsj4nhcb/hdm
+SHOM_TIDE_HARBOR=BREST
+SHOM_TIDE_UTC=0
+ENABLE_DERIVED_TIDE_COEFFICIENTS=true
+TIDE_COEFFICIENT_RANGE_UNIT_M=6.10
+ENABLE_MAREE_INFO_TIDES=false
 MAREE_INFO_PORT_ID=82
 TIDE_COEFFICIENT_DAILY_REDUCER=max
 ENABLE_CMEMS=false
 ENABLE_METNO=true
 CMEMS_USERNAME
 CMEMS_PASSWORD
+CMEMS_LOAD_SUBSET_IN_MEMORY=true
+CMEMS_SUBSET_SURFACE_DEPTH=true
+ALGAL_BLOOM_CHL_LOW_MG_M3=3
+ALGAL_BLOOM_CHL_HIGH_MG_M3=10
 METNO_USER_AGENT
 R2_SYNC_LOOKBACK_HOURS=12
 ```
 
 Par defaut, le workflow programme reste volontairement limite aux sources rapides pour eviter les timeouts GitHub Actions et les limites horaires Open-Meteo. Pour un run complet manuel, definir `FORECAST_SOURCES` avec les codes voulus et passer `ENABLE_CMEMS=true` si les datasets Copernicus doivent etre interroges.
+Pour limiter le temps CMEMS, preferer une selection explicite comme `FORECAST_SOURCES=cmems_ibi_bgc` lorsque seules les variables biogeochimiques sont necessaires. Le pipeline demande seulement les variables utiles et la surface (`CMEMS_SUBSET_SURFACE_DEPTH=true`) puis charge le sous-ensemble en memoire pour eviter les lectures distantes repetitives.
+Le risque d'efflorescence `algal_bloom_risk` est un proxy de bloom phytoplanctonique derive de la chlorophylle CMEMS, pas une probabilite officielle de HAB toxique.
 La publication Supabase est separee de la collecte : si Supabase timeoute, relancer `Environment Forecast Publish` suffit, sans refaire les appels meteo.
 
 Au lancement de `Environment Forecast Publish`, les lignes `environment_forecasts` dont `valid_time` est deja passe par rapport au debut du script sont supprimees.

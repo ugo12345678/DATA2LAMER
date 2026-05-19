@@ -12,6 +12,9 @@ from pscripts.environment.metrics import METRICS
 from pscripts.environment.timeutils import horizon_hours
 
 
+DERIVED_TIDE_SOURCE_CODE = "derived_tide_range"
+
+
 def _mean(values: list[float]) -> float | None:
     if not values:
         return None
@@ -43,6 +46,88 @@ def _source_trace(value: SourceValue) -> dict[str, Any]:
     }
 
 
+def _target_date(value: SourceValue, target_tz: ZoneInfo) -> str:
+    return value.valid_time.astimezone(target_tz).date().isoformat()
+
+
+def derive_tide_coefficient_from_range(high_water_m: float, low_water_m: float, range_unit_m: float) -> float | None:
+    if range_unit_m <= 0:
+        return None
+
+    coefficient = (high_water_m - low_water_m) / range_unit_m * 100.0
+    if not 20.0 <= coefficient <= 120.0:
+        return None
+    return coefficient
+
+
+def _derive_tide_coefficients(values: list[SourceValue], run_time: datetime, target_tz: ZoneInfo) -> list[SourceValue]:
+    if os.environ.get("ENABLE_DERIVED_TIDE_COEFFICIENTS", "true").lower() not in {"1", "true", "yes"}:
+        return []
+
+    tidal_range_unit_m = float(os.environ.get("TIDE_COEFFICIENT_RANGE_UNIT_M", "6.10"))
+    min_samples = int(os.environ.get("DERIVED_TIDE_MIN_HEIGHT_SAMPLES", "6"))
+    if tidal_range_unit_m <= 0:
+        return []
+
+    direct_dates = {
+        (value.spot_id, _target_date(value, target_tz))
+        for value in values
+        if value.metric == "tide_coefficient" and value.value is not None
+    }
+
+    sea_level_groups: dict[tuple[str, str], list[SourceValue]] = defaultdict(list)
+    valid_times_by_group: dict[tuple[str, str], set[datetime]] = defaultdict(set)
+    for value in values:
+        key = (value.spot_id, _target_date(value, target_tz))
+        valid_times_by_group[key].add(value.valid_time)
+        if value.metric == "sea_level_height" and value.value is not None:
+            sea_level_groups[key].append(value)
+
+    derived: list[SourceValue] = []
+    for key, sea_level_values in sea_level_groups.items():
+        if key in direct_dates or len(sea_level_values) < min_samples:
+            continue
+
+        heights = [value.value for value in sea_level_values if value.value is not None]
+        if len(heights) < min_samples:
+            continue
+
+        min_height = min(heights)
+        max_height = max(heights)
+        tidal_range = max_height - min_height
+        coefficient = derive_tide_coefficient_from_range(max_height, min_height, tidal_range_unit_m)
+        if coefficient is None:
+            continue
+
+        spot_id, target_date = key
+        for valid_time in sorted(valid_times_by_group[key]):
+            derived.append(
+                SourceValue(
+                    spot_id=spot_id,
+                    source_code=DERIVED_TIDE_SOURCE_CODE,
+                    valid_time=valid_time,
+                    metric="tide_coefficient",
+                    value=coefficient,
+                    unit="coef",
+                    fetched_at=run_time,
+                    raw_variable="sea_level_height_daily_range",
+                    model=f"range_unit_m={tidal_range_unit_m:g}",
+                    resolution_minutes=1440,
+                    quality_flags={
+                        "formula": "(high_water_m - low_water_m) / range_unit_m * 100",
+                        "target_date": target_date,
+                        "range_unit_m": tidal_range_unit_m,
+                        "height_min_m": min_height,
+                        "height_max_m": max_height,
+                        "height_range_m": tidal_range,
+                        "sample_count": len(heights),
+                    },
+                )
+            )
+
+    return derived
+
+
 def _metric_provenance(metric: str, spec, metric_values: list[SourceValue]) -> dict[str, Any]:
     sources = sorted({item.source_code for item in metric_values})
     values = [item.value for item in metric_values if item.value is not None]
@@ -68,6 +153,8 @@ def _metric_provenance(metric: str, spec, metric_values: list[SourceValue]) -> d
 
 def consolidate_source_values(values: list[SourceValue], run_time: datetime) -> list[dict[str, Any]]:
     by_spot_time_metric: dict[tuple[str, datetime, str], list[SourceValue]] = defaultdict(list)
+    target_tz = ZoneInfo(os.environ.get("FORECAST_TARGET_TIMEZONE", "Europe/Paris"))
+    values = [*values, *_derive_tide_coefficients(values, run_time, target_tz)]
 
     for value in values:
         if value.metric not in METRICS or value.value is None:
@@ -77,8 +164,6 @@ def consolidate_source_values(values: list[SourceValue], run_time: datetime) -> 
     row_map: dict[tuple[str, datetime], dict[str, Any]] = {}
     provenance_map: dict[tuple[str, datetime], dict[str, Any]] = defaultdict(dict)
     source_sets: dict[tuple[str, datetime], set[str]] = defaultdict(set)
-    target_tz = ZoneInfo(os.environ.get("FORECAST_TARGET_TIMEZONE", "Europe/Paris"))
-
     for (spot_id, valid_time, metric), metric_values in by_spot_time_metric.items():
         spec = METRICS[metric]
         numbers = [item.value for item in metric_values if item.value is not None]

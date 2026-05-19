@@ -41,9 +41,12 @@ jobs:
       SPOT_MARGIN_DEG: 0.03
       ENABLE_CMEMS: ${{ vars.ENABLE_CMEMS || 'false' }}
       ENABLE_METNO: ${{ vars.ENABLE_METNO || 'true' }}
-      FORECAST_SOURCES: ${{ vars.FORECAST_SOURCES || 'open_meteo_weather,open_meteo_dwd_icon,open_meteo_marine,open_meteo_marine_meteofrance_wave,metno_locationforecast,maree_info_tide_coefficients' }}
+      FORECAST_SOURCES: ${{ vars.FORECAST_SOURCES || 'open_meteo_weather,open_meteo_dwd_icon,open_meteo_marine,open_meteo_marine_meteofrance_wave,metno_locationforecast,shom_tide_coefficients' }}
       METNO_USER_AGENT: ${{ vars.METNO_USER_AGENT || 'DATA2LAMER/1.0 github-actions' }}
-      ENABLE_MAREE_INFO_TIDES: ${{ vars.ENABLE_MAREE_INFO_TIDES || 'true' }}
+      ENABLE_SHOM_TIDES: ${{ vars.ENABLE_SHOM_TIDES || 'true' }}
+      SHOM_TIDE_HARBOR: ${{ vars.SHOM_TIDE_HARBOR || 'BREST' }}
+      SHOM_TIDE_UTC: ${{ vars.SHOM_TIDE_UTC || '0' }}
+      ENABLE_MAREE_INFO_TIDES: ${{ vars.ENABLE_MAREE_INFO_TIDES || 'false' }}
       MAREE_INFO_PORT_ID: ${{ vars.MAREE_INFO_PORT_ID || '82' }}
 
     steps:

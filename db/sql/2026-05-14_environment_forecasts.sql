@@ -68,6 +68,10 @@ create table if not exists public.environment_forecasts (
   current_direction_deg double precision,
   salinity_psu double precision,
   chlorophyll_mg_m3 double precision,
+  phytoplankton_carbon_mmol_m3 double precision,
+  net_primary_production_mg_m3_day double precision,
+  euphotic_depth_m double precision,
+  algal_bloom_risk double precision,
   light_attenuation_m1 double precision,
 
   created_at timestamptz not null default now(),
@@ -122,6 +126,10 @@ alter table public.environment_forecasts
   add column if not exists current_direction_deg double precision,
   add column if not exists salinity_psu double precision,
   add column if not exists chlorophyll_mg_m3 double precision,
+  add column if not exists phytoplankton_carbon_mmol_m3 double precision,
+  add column if not exists net_primary_production_mg_m3_day double precision,
+  add column if not exists euphotic_depth_m double precision,
+  add column if not exists algal_bloom_risk double precision,
   add column if not exists light_attenuation_m1 double precision,
   add column if not exists created_at timestamptz not null default now(),
   add column if not exists updated_at timestamptz not null default now();
@@ -384,6 +392,10 @@ begin
         ef.current_direction_deg,
         ef.salinity_psu,
         ef.chlorophyll_mg_m3,
+        ef.phytoplankton_carbon_mmol_m3,
+        ef.net_primary_production_mg_m3_day,
+        ef.euphotic_depth_m,
+        ef.algal_bloom_risk,
         ef.light_attenuation_m1
       from public.dive_outings o
       left join public.spots s

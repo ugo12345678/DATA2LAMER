@@ -277,4 +277,4 @@ class MareeInfoTideCoefficientSource(ForecastSource):
 
 
 def maree_info_enabled() -> bool:
-    return os.environ.get("ENABLE_MAREE_INFO_TIDES", "true").lower() in {"1", "true", "yes"}
+    return os.environ.get("ENABLE_MAREE_INFO_TIDES", "false").lower() in {"1", "true", "yes"}

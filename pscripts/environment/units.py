@@ -100,4 +100,16 @@ def normalize_metric_value(metric: str, value: Any, unit: str | None) -> tuple[f
     if metric == "salinity":
         return number, "psu"
 
+    if metric == "phytoplankton_carbon":
+        return number, "mmol/m3"
+
+    if metric == "net_primary_production":
+        return number, "mg/m3/day"
+
+    if metric == "euphotic_depth":
+        return number, "m"
+
+    if metric == "algal_bloom_risk":
+        return number, "score"
+
     return number, unit or ""

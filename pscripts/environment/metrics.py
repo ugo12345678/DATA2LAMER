@@ -54,6 +54,14 @@ METRICS: dict[str, MetricSpec] = {
     "current_direction": MetricSpec("current_direction", "current_direction_deg", "deg", "circular"),
     "salinity": MetricSpec("salinity", "salinity_psu", "psu"),
     "chlorophyll": MetricSpec("chlorophyll", "chlorophyll_mg_m3", "mg/m3"),
+    "phytoplankton_carbon": MetricSpec("phytoplankton_carbon", "phytoplankton_carbon_mmol_m3", "mmol/m3"),
+    "net_primary_production": MetricSpec(
+        "net_primary_production",
+        "net_primary_production_mg_m3_day",
+        "mg/m3/day",
+    ),
+    "euphotic_depth": MetricSpec("euphotic_depth", "euphotic_depth_m", "m"),
+    "algal_bloom_risk": MetricSpec("algal_bloom_risk", "algal_bloom_risk", "score"),
     "light_attenuation": MetricSpec("light_attenuation", "light_attenuation_m1", "1/m"),
 }
 

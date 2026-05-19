@@ -55,25 +55,39 @@ def _maybe_select_surface(ds):
     return ds
 
 
-def _open_dataset(dataset_id: str, spots: pd.DataFrame, run_time: datetime, select_surface: bool):
+def _open_dataset(
+    dataset_id: str,
+    spots: pd.DataFrame,
+    run_time: datetime,
+    select_surface: bool,
+    variables: list[str] | None = None,
+):
     import copernicusmarine
 
     start_dt, end_dt = _forecast_window(run_time)
     bbox = _spots_bbox(spots)
+    request_kwargs: dict[str, Any] = {
+        "dataset_id": dataset_id,
+        "username": os.environ["CMEMS_USERNAME"],
+        "password": os.environ["CMEMS_PASSWORD"],
+        "start_datetime": start_dt,
+        "end_datetime": end_dt,
+        "coordinates_selection_method": os.environ.get("CMEMS_COORDINATES_SELECTION_METHOD", "nearest"),
+        **bbox,
+    }
+    if variables:
+        request_kwargs["variables"] = variables
+    if select_surface and os.environ.get("CMEMS_SUBSET_SURFACE_DEPTH", "true").lower() in {"1", "true", "yes"}:
+        request_kwargs["minimum_depth"] = float(os.environ.get("CMEMS_SURFACE_DEPTH_M", "0"))
+        request_kwargs["maximum_depth"] = float(os.environ.get("CMEMS_SURFACE_DEPTH_M", "0"))
+
     print(
         "[INFO] CMEMS opening dataset "
         f"{dataset_id} bbox=({bbox['minimum_latitude']:.3f},{bbox['minimum_longitude']:.3f})"
         f"-({bbox['maximum_latitude']:.3f},{bbox['maximum_longitude']:.3f})"
+        f" variables={','.join(variables or ['all'])}"
     )
-    ds = copernicusmarine.open_dataset(
-        dataset_id=dataset_id,
-        username=os.environ["CMEMS_USERNAME"],
-        password=os.environ["CMEMS_PASSWORD"],
-        start_datetime=start_dt,
-        end_datetime=end_dt,
-        coordinates_selection_method="nearest",
-        **bbox,
-    )
+    ds = copernicusmarine.open_dataset(**request_kwargs)
     ds = _standardize_coords(ds)
     if select_surface:
         ds = _maybe_select_surface(ds)
@@ -132,6 +146,7 @@ def _dataset_resolution_minutes(ds) -> int | None:
 class CmemsSource(ForecastSource):
     dataset_id: str
     variable_map: dict[str, list[str]]
+    requested_variables: list[str] | None = None
     select_surface = False
     default_units: dict[str, str] = {}
 
@@ -140,13 +155,29 @@ class CmemsSource(ForecastSource):
             print(f"[INFO] {self.config.code} skipped: CMEMS credentials are not configured.")
             return []
 
-        ds = _open_dataset(self.dataset_id, spots, run_time, self.select_surface)
+        requested_variables = self._requested_variables()
+        try:
+            ds = _open_dataset(self.dataset_id, spots, run_time, self.select_surface, requested_variables)
+        except Exception:
+            allow_unfiltered_fallback = (
+                os.environ.get("CMEMS_ALLOW_UNFILTERED_FALLBACK", "false").lower() in {"1", "true", "yes"}
+            )
+            if not requested_variables or not allow_unfiltered_fallback:
+                raise
+            print(
+                f"[WARN] {self.config.code}: variable-filtered CMEMS open failed; "
+                "retrying without variable filter."
+            )
+            ds = _open_dataset(self.dataset_id, spots, run_time, self.select_surface)
+
         picked = _pick_available_vars(ds, self.variable_map)
         if not picked:
             print(f"[WARN] {self.config.code} skipped: no expected variables found in {self.dataset_id}.")
             return []
 
         ds = ds[list(picked.values())].rename({v: k for k, v in picked.items()})
+        if os.environ.get("CMEMS_LOAD_SUBSET_IN_MEMORY", "true").lower() in {"1", "true", "yes"}:
+            ds = ds.load()
         resolution = _dataset_resolution_minutes(ds)
         rows: list[SourceValue] = []
         for _, spot in spots.iterrows():
@@ -208,6 +239,12 @@ class CmemsSource(ForecastSource):
     def _metric_values(self, frame_row: pd.Series) -> dict[str, Any]:
         return {metric: frame_row[metric] for metric in self.variable_map if metric in frame_row}
 
+    def _requested_variables(self) -> list[str] | None:
+        configured = os.environ.get(f"{self.config.code.upper()}_VARIABLES")
+        if configured:
+            return [item.strip() for item in configured.split(",") if item.strip()]
+        return self.requested_variables
+
 
 class CmemsWavSource(CmemsSource):
     config = SourceConfig(
@@ -222,6 +259,7 @@ class CmemsWavSource(CmemsSource):
         "wave_period": ["VTM10", "mwp", "tm10"],
         "wave_direction": ["VMDR", "mwd"],
     }
+    requested_variables = ["VHM0", "VTM10", "VMDR"]
     default_units = {
         "wave_height": "m",
         "wave_period": "s",
@@ -244,6 +282,7 @@ class CmemsPhySource(CmemsSource):
         "current_u": ["uo", "vozocrtx"],
         "current_v": ["vo", "vomecrty"],
     }
+    requested_variables = ["thetao", "so", "uo", "vo"]
     default_units = {
         "water_temperature": "degC",
         "salinity": "psu",
@@ -278,9 +317,38 @@ class CmemsBgcSource(CmemsSource):
     select_surface = True
     variable_map = {
         "chlorophyll": ["chl", "CHL", "chl1", "chlorophyll"],
+        "phytoplankton_carbon": ["phyc", "PHY", "phytoplankton_carbon"],
+        "net_primary_production": ["nppv", "NPPV", "net_primary_production"],
+        "euphotic_depth": ["zeu", "ZEU", "euphotic_depth"],
         "light_attenuation": ["kd", "kd490", "KD490", "att", "light_attenuation", "mldr10_1"],
     }
+    requested_variables = ["chl", "phyc", "nppv", "zeu"]
     default_units = {
         "chlorophyll": "mg/m3",
+        "phytoplankton_carbon": "mmol/m3",
+        "net_primary_production": "mg/m3/day",
+        "euphotic_depth": "m",
         "light_attenuation": "1/m",
     }
+
+    def _metric_values(self, frame_row: pd.Series) -> dict[str, Any]:
+        values = super()._metric_values(frame_row)
+        chlorophyll = to_float(values.get("chlorophyll"))
+        bloom_risk = _algal_bloom_risk(chlorophyll)
+        if bloom_risk is not None:
+            values["algal_bloom_risk"] = bloom_risk
+        return values
+
+
+def _algal_bloom_risk(chlorophyll_mg_m3: float | None) -> float | None:
+    if chlorophyll_mg_m3 is None:
+        return None
+    low = float(os.environ.get("ALGAL_BLOOM_CHL_LOW_MG_M3", "3"))
+    high = float(os.environ.get("ALGAL_BLOOM_CHL_HIGH_MG_M3", "10"))
+    if high <= low:
+        return None
+    if chlorophyll_mg_m3 <= low:
+        return 0.0
+    if chlorophyll_mg_m3 >= high:
+        return 1.0
+    return (chlorophyll_mg_m3 - low) / (high - low)
