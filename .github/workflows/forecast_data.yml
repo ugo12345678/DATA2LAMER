@@ -39,7 +39,7 @@ jobs:
       FORECAST_UPSERT_BATCH_SIZE: ${{ vars.FORECAST_UPSERT_BATCH_SIZE || '100' }}
       FORECAST_THREAD_WORKERS: ${{ vars.FORECAST_THREAD_WORKERS || '2' }}
       SPOT_MARGIN_DEG: 0.03
-      ENABLE_CMEMS: ${{ vars.ENABLE_CMEMS || 'false' }}
+      ENABLE_CMEMS: ${{ vars.ENABLE_CMEMS || 'true' }}
       ENABLE_METNO: ${{ vars.ENABLE_METNO || 'true' }}
       FORECAST_SOURCES: ${{ vars.FORECAST_SOURCES || 'open_meteo_weather,open_meteo_dwd_icon,open_meteo_marine,open_meteo_marine_meteofrance_wave,metno_locationforecast,shom_tide_coefficients' }}
       METNO_USER_AGENT: ${{ vars.METNO_USER_AGENT || 'DATA2LAMER/1.0 github-actions' }}
