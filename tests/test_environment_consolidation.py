@@ -8,6 +8,7 @@ import types
 import unittest
 from datetime import datetime, timezone
 from io import BytesIO
+from pathlib import Path
 
 from pscripts.environment.consolidation import consolidate_source_values
 from pscripts.environment.entities import SourceConfig, SourceValue
@@ -17,7 +18,11 @@ from pscripts.environment.repositories import (
     Vu2LamerDiveTrainingDatasetRepository,
     Vu2LamerForecastRepository,
 )
-from pscripts.environment.sync_environment_forecasts import build_sources, environment_forecast_column_counts
+from pscripts.environment.sync_environment_forecasts import (
+    build_sources,
+    environment_forecast_column_counts,
+    source_value_metric_counts,
+)
 from pscripts.environment.sources import cmems
 from pscripts.environment.sources import maree_info
 from pscripts.environment.sources import open_meteo
@@ -844,6 +849,23 @@ class EnvironmentConsolidationTest(unittest.TestCase):
 
         self.assertEqual(source_codes, ["open_meteo_weather", "open_meteo_marine"])
 
+    def test_forecast_workflows_include_cmems_phy_and_bgc_sources(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        workflow_paths = [
+            repo_root / ".github" / "workflows" / "forecast_data.yml",
+            repo_root / ".github" / "workflows" / "forecast_publish.yml",
+        ]
+
+        for workflow_path in workflow_paths:
+            content = workflow_path.read_text(encoding="utf-8")
+            self.assertIn("cmems_ibi_phy", content, workflow_path.name)
+            self.assertIn("cmems_ibi_bgc", content, workflow_path.name)
+
+        forecast_data = workflow_paths[0].read_text(encoding="utf-8")
+        self.assertIn("CMEMS_ALLOW_UNFILTERED_FALLBACK: ${{ vars.CMEMS_ALLOW_UNFILTERED_FALLBACK || 'false' }}", forecast_data)
+        self.assertIn("CMEMS_IBI_PHY_VARIABLES: ${{ vars.CMEMS_IBI_PHY_VARIABLES || 'thetao,so,uo,vo' }}", forecast_data)
+        self.assertIn("CMEMS_IBI_BGC_VARIABLES: ${{ vars.CMEMS_IBI_BGC_VARIABLES || 'chl,phyc,nppv,zeu' }}", forecast_data)
+
     def test_environment_forecast_column_counts_counts_non_null_values(self):
         rows = [
             {
@@ -869,6 +891,25 @@ class EnvironmentConsolidationTest(unittest.TestCase):
         self.assertEqual(counts["wave_height_m"], 1)
         self.assertEqual(counts["chlorophyll_mg_m3"], 1)
         self.assertEqual(counts["salinity_psu"], 0)
+
+    def test_source_value_metric_counts_summarizes_non_null_values_by_source(self):
+        run_time = datetime(2026, 5, 14, 8, tzinfo=timezone.utc)
+        values = [
+            SourceValue("spot-1", "cmems_ibi_bgc", run_time, "chlorophyll", 1.2, "mg/m3", run_time, "chl"),
+            SourceValue("spot-1", "cmems_ibi_bgc", run_time, "chlorophyll", None, "mg/m3", run_time, "chl"),
+            SourceValue("spot-1", "cmems_ibi_bgc", run_time, "euphotic_depth", 18.0, "m", run_time, "zeu"),
+            SourceValue("spot-1", "open_meteo_marine", run_time, "wave_height", 0.8, "m", run_time, "wave_height"),
+        ]
+
+        counts = source_value_metric_counts(values)
+
+        self.assertEqual(
+            counts,
+            {
+                "cmems_ibi_bgc": {"chlorophyll": 1, "euphotic_depth": 1},
+                "open_meteo_marine": {"wave_height": 1},
+            },
+        )
 
 
 if __name__ == "__main__":

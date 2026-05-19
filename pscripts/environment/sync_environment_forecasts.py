@@ -73,6 +73,29 @@ def log_environment_forecast_column_counts(rows: list[dict[str, object]]) -> Non
         print(f"[INFO]   {column}: {count}/{total_rows} ({ratio:.1f}%)")
 
 
+def source_value_metric_counts(values: list[SourceValue]) -> dict[str, dict[str, int]]:
+    counts: dict[str, dict[str, int]] = {}
+    for value in values:
+        if value.value is None:
+            continue
+        source_counts = counts.setdefault(value.source_code, {})
+        source_counts[value.metric] = source_counts.get(value.metric, 0) + 1
+    return {
+        source_code: dict(sorted(metric_counts.items()))
+        for source_code, metric_counts in sorted(counts.items())
+    }
+
+
+def log_source_value_metric_counts(values: list[SourceValue]) -> None:
+    counts = source_value_metric_counts(values)
+    total_values = sum(sum(metric_counts.values()) for metric_counts in counts.values())
+    print(f"[INFO] source value coverage: values={total_values} sources={len(counts)}")
+    for source_code, metric_counts in counts.items():
+        source_total = sum(metric_counts.values())
+        metrics = ", ".join(f"{metric}={count}" for metric, count in metric_counts.items())
+        print(f"[INFO]   {source_code}: {source_total} values ({metrics})")
+
+
 def build_sources() -> list[ForecastSource]:
     sources: list[ForecastSource] = [
         OpenMeteoWeatherSource(),
@@ -116,6 +139,9 @@ def build_sources() -> list[ForecastSource]:
         unknown = sorted(enabled - known)
         if unknown:
             print(f"[WARN] Unknown FORECAST_SOURCES ignored: {', '.join(unknown)}")
+        skipped = sorted(known - enabled - disabled)
+        if skipped:
+            print(f"[INFO] FORECAST_SOURCES allowlist skipped: {', '.join(skipped)}")
         sources = [source for source in sources if source.config.code in enabled]
 
     return [source for source in sources if source.config.code not in disabled]
@@ -205,6 +231,7 @@ def main() -> None:
     )
     consolidated_rows: list[dict[str, object]] | None = None
     if log_column_counts:
+        log_source_value_metric_counts(values)
         consolidated_rows = consolidate_source_values(values, run_time) if values else []
         log_environment_forecast_column_counts(consolidated_rows)
 
