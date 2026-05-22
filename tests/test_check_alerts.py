@@ -118,11 +118,27 @@ class CheckAlertsTest(unittest.TestCase):
         self.assertIn('workflows: ["Environment Forecast Publish"]', content)
         self.assertNotIn('workflows: ["Environment Forecast Sync"]', content)
 
-    def test_target_date_window_check_detects_unpublished_horizon(self):
+    def test_available_alert_date_range_caps_to_published_horizon(self):
         forecast_window = ("2026-05-22", "2026-05-25")
 
-        self.assertTrue(check_alerts.target_date_in_window("2026-05-25", forecast_window))
-        self.assertFalse(check_alerts.target_date_in_window("2026-05-27", forecast_window))
+        date_range = check_alerts.available_alert_date_range(
+            start_date="2026-05-22",
+            requested_end_date="2026-05-27",
+            forecast_window=forecast_window,
+        )
+
+        self.assertEqual(date_range, ("2026-05-22", "2026-05-25"))
+
+    def test_available_alert_date_range_returns_none_without_overlap(self):
+        forecast_window = ("2026-05-22", "2026-05-25")
+
+        date_range = check_alerts.available_alert_date_range(
+            start_date="2026-05-27",
+            requested_end_date="2026-05-28",
+            forecast_window=forecast_window,
+        )
+
+        self.assertIsNone(date_range)
 
     def test_forecast_sync_default_keeps_short_horizon(self):
         repo_root = Path(__file__).resolve().parents[1]

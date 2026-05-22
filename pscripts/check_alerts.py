@@ -221,13 +221,16 @@ def load_user_emails(user_ids: list[str]) -> dict[str, str]:
     return {}
 
 
-def load_forecasts_for_spots(spot_ids: list, target_date: str) -> list[dict]:
+def load_forecasts_for_spots(spot_ids: list, start_date: str, end_date: str) -> list[dict]:
     resp = (
         client()
         .table(FORECAST_TABLE)
         .select(",".join(FORECAST_SELECT_COLUMNS))
         .in_("spot_id", spot_ids)
-        .eq("target_date", target_date)
+        .gte("target_date", start_date)
+        .lte("target_date", end_date)
+        .order("target_date")
+        .order("valid_time")
         .execute()
     )
     return resp.data or []
@@ -259,11 +262,21 @@ def load_forecast_window() -> tuple[str | None, str | None]:
     return min_date, max_date
 
 
-def target_date_in_window(target_date: str, forecast_window: tuple[str | None, str | None]) -> bool:
+def available_alert_date_range(
+    *,
+    start_date: str,
+    requested_end_date: str,
+    forecast_window: tuple[str | None, str | None],
+) -> tuple[str, str] | None:
     min_date, max_date = forecast_window
     if not min_date or not max_date:
-        return True
-    return min_date <= target_date <= max_date
+        return start_date, requested_end_date
+
+    effective_start = max(start_date, min_date)
+    effective_end = min(requested_end_date, max_date)
+    if effective_start > effective_end:
+        return None
+    return effective_start, effective_end
 
 
 def group_forecasts_by_spot(forecasts: list[dict]) -> dict[str, list[dict]]:
@@ -566,7 +579,7 @@ def main() -> None:
     alerts_triggered = 0
     skipped_already_sent = 0
     skipped_no_spots = 0
-    skipped_outside_forecast_window = 0
+    skipped_no_forecast_overlap = 0
 
     for alert in alerts:
         alert_name = alert.get("name", alert["id"])
@@ -577,23 +590,39 @@ def main() -> None:
 
         forecast_day = alert.get("forecast_day") or 0
         target_tz = ZoneInfo(FORECAST_TARGET_TIMEZONE)
-        target_date = (datetime.now(target_tz) + timedelta(days=forecast_day)).strftime("%Y-%m-%d")
+        today = datetime.now(target_tz).date()
+        start_date = today.isoformat()
+        requested_end_date = (today + timedelta(days=forecast_day)).isoformat()
         spot_ids = [item["spot_id"] for item in alert.get("alert_spots") or []]
         if not spot_ids:
             skipped_no_spots += 1
             print(f"[{alert_name}] no spots, skipped.")
             continue
-        if not target_date_in_window(target_date, forecast_window):
-            skipped_outside_forecast_window += 1
+
+        date_range = available_alert_date_range(
+            start_date=start_date,
+            requested_end_date=requested_end_date,
+            forecast_window=forecast_window,
+        )
+        if date_range is None:
+            skipped_no_forecast_overlap += 1
             print(
-                f"[{alert_name}] target date {target_date} outside published forecast window "
+                f"[{alert_name}] requested forecast range {start_date} -> {requested_end_date} "
+                "does not overlap published forecast window "
                 f"{forecast_window[0]} -> {forecast_window[1]}, skipped."
             )
             continue
 
-        forecasts = load_forecasts_for_spots(spot_ids, target_date)
+        range_start, range_end = date_range
+        forecasts = load_forecasts_for_spots(spot_ids, range_start, range_end)
         forecasts_by_spot = group_forecasts_by_spot(forecasts)
-        print(f"[{alert_name}] {len(forecasts)} hourly forecasts for {target_date}")
+        if range_end != requested_end_date:
+            print(
+                f"[{alert_name}] {len(forecasts)} hourly forecasts for {range_start} -> {range_end} "
+                f"(requested through {requested_end_date})"
+            )
+        else:
+            print(f"[{alert_name}] {len(forecasts)} hourly forecasts for {range_start} -> {range_end}")
 
         triggered = evaluate_alert(alert, condition_types, forecasts_by_spot)
         if not triggered:
@@ -618,7 +647,7 @@ def main() -> None:
         "emails_sent": emails_sent,
         "skipped_already_sent": skipped_already_sent,
         "skipped_no_spots": skipped_no_spots,
-        "skipped_outside_forecast_window": skipped_outside_forecast_window,
+        "skipped_no_forecast_overlap": skipped_no_forecast_overlap,
         "forecast_window": {
             "min_target_date": forecast_window[0],
             "max_target_date": forecast_window[1],
