@@ -18,7 +18,7 @@ import requests as http_requests
 from pscripts.supabase_client import get_vu2lamer_supabase
 
 
-RESEND_API_KEY = os.environ["RESEND_API_KEY"]
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
 RESEND_FROM_EMAIL = os.environ.get("RESEND_FROM_EMAIL", "onboarding@resend.dev")
 
 FORECAST_TABLE = os.environ.get("VU2LAMER_FORECAST_TABLE", "environment_forecasts")
@@ -93,6 +93,35 @@ CONDITION_FIELD_MAP = {
     "algal_bloom_risk": "algal_bloom_risk",
 }
 
+CONDITION_TYPE_FIELD_MAP = {
+    "air_temperature": "air_temperature_c",
+    "chlorophyll": "chlorophyll_mg_m3",
+    "cloud_cover": "cloud_cover_pct",
+    "cloud_cover_low": "cloud_cover_low_pct",
+    "current_direction": "current_direction_deg",
+    "current_speed": "current_speed_ms",
+    "dew_point": "dew_point_c",
+    "precipitation": "precipitation_mm",
+    "pressure_msl": "pressure_msl_hpa",
+    "relative_humidity": "relative_humidity_pct",
+    "salinity": "salinity_psu",
+    "secondary_swell_height": "secondary_swell_wave_height_m",
+    "secondary_swell_period": "secondary_swell_wave_period_s",
+    "swell_height": "swell_wave_height_m",
+    "swell_period": "swell_wave_period_s",
+    "water_temperature": "water_temperature_c",
+    "wave_direction": "wave_direction_deg",
+    "wave_height": "wave_height_m",
+    "wave_period": "wave_period_s",
+    "weather_visibility": "weather_visibility_m",
+    "wind_direction": "wind_direction_deg",
+    "wind_gusts": "wind_gusts_ms",
+    "wind_speed": "wind_speed_ms",
+}
+
+DERIVED_CONDITION_TYPES = {"condition_score"}
+UNFORECASTABLE_CONDITION_TYPES = {"visibility"}
+
 FORECAST_SELECT_COLUMNS = [
     "spot_id",
     "target_date",
@@ -116,9 +145,15 @@ FORECAST_SELECT_COLUMNS = [
     "wave_height_m",
     "wave_period_s",
     "wave_direction_deg",
+    "wind_wave_height_m",
+    "wind_wave_period_s",
+    "wind_wave_direction_deg",
     "swell_wave_height_m",
     "swell_wave_period_s",
     "swell_wave_direction_deg",
+    "secondary_swell_wave_height_m",
+    "secondary_swell_wave_period_s",
+    "secondary_swell_wave_direction_deg",
     "water_temperature_c",
     "sea_level_height_m",
     "tide_coefficient",
@@ -149,7 +184,7 @@ def load_active_alerts() -> list[dict]:
         client()
         .table("alerts")
         .select(
-            "id, user_id, name, description, notification_type, forecast_day, "
+            "id, user_id, name, description, notification_type, forecast_day, unit_system, "
             "alert_conditions(id, condition_type_id, operator, threshold_value), "
             "alert_spots(spot_id)"
         )
@@ -216,16 +251,97 @@ def get_forecast_value(forecast: dict, field: str) -> float | None:
         return None
 
 
+def marine_condition_score(forecast: dict) -> float | None:
+    score = 100.0
+    used = False
+
+    wave_height = get_forecast_value(forecast, "wave_height_m")
+    if wave_height is not None:
+        used = True
+        score -= max(0.0, min(35.0, wave_height / 2.5 * 35.0))
+
+    wind_speed = get_forecast_value(forecast, "wind_speed_ms")
+    if wind_speed is not None:
+        used = True
+        score -= max(0.0, min(25.0, wind_speed / 15.0 * 25.0))
+
+    wind_gusts = get_forecast_value(forecast, "wind_gusts_ms")
+    if wind_gusts is not None:
+        used = True
+        score -= max(0.0, min(15.0, wind_gusts / 22.0 * 15.0))
+
+    current_speed = get_forecast_value(forecast, "current_speed_ms")
+    if current_speed is not None:
+        used = True
+        score -= max(0.0, min(15.0, current_speed / 1.2 * 15.0))
+
+    precipitation = get_forecast_value(forecast, "precipitation_mm")
+    if precipitation is not None:
+        used = True
+        score -= max(0.0, min(10.0, precipitation / 8.0 * 10.0))
+
+    return round(max(0.0, min(100.0, score)), 1) if used else None
+
+
+def resolve_condition_field(condition: dict, condition_type: dict) -> str | None:
+    condition_type_id = condition.get("condition_type_id")
+    if condition_type_id in CONDITION_TYPE_FIELD_MAP:
+        return CONDITION_TYPE_FIELD_MAP[condition_type_id]
+    if condition_type_id in DERIVED_CONDITION_TYPES:
+        return condition_type_id
+    if condition_type_id in UNFORECASTABLE_CONDITION_TYPES:
+        return None
+
+    label = normalize_label(condition_type.get("label") or "")
+    return CONDITION_FIELD_MAP.get(label)
+
+
+def convert_threshold_to_forecast_units(
+    threshold: float,
+    condition_type_id: str,
+    *,
+    unit_system: str = "metric",
+) -> float:
+    if unit_system == "imperial":
+        if condition_type_id in {"air_temperature", "water_temperature", "dew_point"}:
+            return (threshold - 32.0) * 5.0 / 9.0
+        if condition_type_id in {"wind_speed", "wind_gusts"}:
+            return threshold * 0.44704
+        if condition_type_id in {"wave_height", "swell_height", "secondary_swell_height"}:
+            return threshold * 0.3048
+        if condition_type_id == "weather_visibility":
+            return threshold * 1609.344
+        if condition_type_id == "precipitation":
+            return threshold * 25.4
+
+    if condition_type_id in {"wind_speed", "wind_gusts"}:
+        return threshold / 3.6
+    if condition_type_id == "weather_visibility":
+        return threshold * 1000.0
+    return threshold
+
+
+def get_condition_value(forecast: dict, field: str) -> float | None:
+    if field == "condition_score":
+        return marine_condition_score(forecast)
+    return get_forecast_value(forecast, field)
+
+
 def evaluate_condition(forecast: dict, condition: dict, condition_types: dict[str, dict]) -> bool | None:
     ctype = condition_types.get(condition["condition_type_id"])
     if not ctype:
         print(f"  [WARN] unknown condition_type_id: {condition['condition_type_id']}")
         return None
 
-    label = normalize_label(ctype["label"])
-    field = CONDITION_FIELD_MAP.get(label)
+    field = resolve_condition_field(condition, ctype)
     if not field:
-        print(f"  [WARN] condition not mapped to hourly forecasts: '{label}'")
+        if condition.get("condition_type_id") in UNFORECASTABLE_CONDITION_TYPES:
+            print(
+                "  [WARN] condition not forecastable from environment_forecasts: "
+                f"'{condition['condition_type_id']}'"
+            )
+        else:
+            print(f"  [WARN] condition not mapped to hourly forecasts: '{condition['condition_type_id']}'")
         return None
 
     operator_fn = OPERATORS.get(condition["operator"])
@@ -233,11 +349,16 @@ def evaluate_condition(forecast: dict, condition: dict, condition_types: dict[st
         print(f"  [WARN] unknown operator: '{condition['operator']}'")
         return None
 
-    value = get_forecast_value(forecast, field)
+    value = get_condition_value(forecast, field)
     if value is None:
         return None
 
-    return operator_fn(value, float(condition["threshold_value"]))
+    threshold = convert_threshold_to_forecast_units(
+        float(condition["threshold_value"]),
+        str(condition["condition_type_id"]),
+        unit_system=str(condition.get("unit_system") or "metric"),
+    )
+    return operator_fn(value, threshold)
 
 
 def evaluate_alert(
@@ -248,6 +369,7 @@ def evaluate_alert(
     conditions = alert.get("alert_conditions") or []
     if not conditions:
         return []
+    unit_system = alert.get("unit_system") or "metric"
 
     triggered_spots = []
     for alert_spot in alert.get("alert_spots") or []:
@@ -255,7 +377,10 @@ def evaluate_alert(
         forecasts = forecasts_by_spot.get(spot_id, [])
 
         for forecast in forecasts:
-            results = [evaluate_condition(forecast, cond, condition_types) for cond in conditions]
+            results = [
+                evaluate_condition(forecast, {**condition, "unit_system": unit_system}, condition_types)
+                for condition in conditions
+            ]
             if all(result is True for result in results):
                 triggered_spots.append({"spot_id": spot_id, "forecast": forecast})
                 break
@@ -324,10 +449,15 @@ def format_alert_email(alert: dict, triggered: list[dict], condition_types: dict
 
 
 def send_email(to_email: str, subject: str, html_body: str) -> bool:
+    api_key = RESEND_API_KEY or os.environ.get("RESEND_API_KEY")
+    if not api_key:
+        print("  [ERROR] Email failed: RESEND_API_KEY is missing")
+        return False
+
     resp = http_requests.post(
         "https://api.resend.com/emails",
         headers={
-            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         },
         json={

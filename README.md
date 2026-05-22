@@ -126,6 +126,7 @@ ALGAL_BLOOM_CHL_LOW_MG_M3=3
 ALGAL_BLOOM_CHL_HIGH_MG_M3=10
 METNO_USER_AGENT
 R2_SYNC_LOOKBACK_HOURS=12
+FORECAST_DELETE_BATCH_SIZE=100
 ```
 
 Par defaut, le workflow programme reste volontairement limite aux sources rapides pour eviter les timeouts GitHub Actions et les limites horaires Open-Meteo. Pour un run complet manuel, definir `FORECAST_SOURCES` avec les codes voulus et passer `ENABLE_CMEMS=true` si les datasets Copernicus doivent etre interroges.
@@ -133,9 +134,9 @@ Pour limiter le temps CMEMS, preferer une selection explicite comme `FORECAST_SO
 Le risque d'efflorescence `algal_bloom_risk` est un proxy de bloom phytoplanctonique derive de la chlorophylle CMEMS, pas une probabilite officielle de HAB toxique.
 La publication Supabase est separee de la collecte : si Supabase timeoute, relancer `Environment Forecast Publish` suffit, sans refaire les appels meteo.
 
-Au lancement de `Environment Forecast Publish`, les lignes `environment_forecasts` dont `valid_time` est deja passe par rapport au debut du script sont supprimees.
+Au lancement de `Environment Forecast Publish`, les nouvelles lignes `environment_forecasts` sont upsertees puis les lignes dont `valid_time` est deja passe par rapport au debut du script sont supprimees par petits lots (`FORECAST_DELETE_BATCH_SIZE`) pour eviter les timeouts PostgREST.
 
-Le publish alimente aussi un dataset d'entrainement R2 si la vue applicative `dive_visibility_training_dataset` existe. Le dataset est cumulatif :
+Le publish alimente aussi un dataset d'entrainement R2 depuis les tables applicatives VU2LAMER actuelles (`dives`, `dive_spots`, `dive_spot_images`, `spots` et `environment_forecasts`). Les observations de visibilite viennent de `dive_spots`. Le dataset est cumulatif :
 
 - `training/dive_visibility/latest.jsonl.gz` contient l'etat dedoublonne par sortie (`outing_id` par defaut) ;
 - `training/dive_visibility/runs/run_date=YYYY-MM-DD/run_hour=HH/dataset_delta.jsonl.gz` conserve les lignes vues pendant ce publish ;
@@ -148,13 +149,17 @@ TRAINING_DATASET_EXPORT_ENABLED=true
 TRAINING_DATASET_EXPORT_REQUIRED=false
 TRAINING_DATASET_DEDUP_KEY=outing_id
 TRAINING_DATASET_FETCH_BATCH_SIZE=1000
+TRAINING_DATASET_FILTER_BATCH_SIZE=100
+TRAINING_DATASET_SOURCE=app_tables
 VU2LAMER_TRAINING_DATASET_VIEW=dive_visibility_training_dataset
 R2_TRAINING_DATASET_PREFIX=training/dive_visibility
 ```
 
+`TRAINING_DATASET_SOURCE=view` reste disponible pour lire explicitement l'ancienne vue `dive_visibility_training_dataset` si une base VU2LAMER historique l'utilise encore.
+
 ## Alertes
 
-Les alertes lisent maintenant `environment_forecasts` et evaluent les conditions heure par heure sur la date cible.
+Les alertes se declenchent apres `Environment Forecast Publish`, une fois les previsions consolidees publiees dans `environment_forecasts`. Elles evaluent les conditions heure par heure sur la date cible, avec conversion des seuils saisis dans les unites applicatives (`km/h`, `km`, imperial) vers les unites stockees par le forecast.
 
 ```bash
 python -m pscripts.check_alerts

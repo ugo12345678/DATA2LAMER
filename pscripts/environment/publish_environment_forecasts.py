@@ -108,10 +108,10 @@ def main() -> None:
 
     app_repo = Vu2LamerForecastRepository()
     dataset_rows_before_purge = _fetch_training_dataset_rows()
-    deleted = app_repo.delete_expired(cutoff=pipeline_started_at)
     upserted = app_repo.upsert(consolidated_rows)
     dataset_rows_after_publish = _fetch_training_dataset_rows()
     _publish_training_dataset(run_time, [*dataset_rows_before_purge, *dataset_rows_after_publish])
+    deleted = app_repo.delete_expired(cutoff=pipeline_started_at)
 
     print(f"[OK] VU2LAMER environment rows upserted: {upserted}")
     print(f"[OK] VU2LAMER expired rows deleted: {deleted}")

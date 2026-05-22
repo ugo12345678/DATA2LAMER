@@ -49,11 +49,22 @@ class FakeResponse:
 
 
 class FakeForecastTable:
-    def __init__(self):
+    def __init__(self, rows=None):
+        self.rows = rows or [{"id": "old-1"}, {"id": "old-2"}, {"id": "old-3"}]
         self.deleted_column = None
         self.deleted_cutoff = None
+        self.deleted_ids = []
+        self.selected_column = None
+        self.limit_size = None
+        self.mode = None
+
+    def select(self, columns):
+        self.mode = "select"
+        self.selected_column = columns
+        return self
 
     def delete(self, **kwargs):
+        self.mode = "delete"
         return self
 
     def lt(self, column, value):
@@ -61,8 +72,28 @@ class FakeForecastTable:
         self.deleted_cutoff = value
         return self
 
+    def order(self, column):
+        return self
+
+    def limit(self, size):
+        self.limit_size = size
+        return self
+
+    def in_(self, column, values):
+        if column != "id":
+            raise ValueError(column)
+        self.deleted_ids.extend(values)
+        return self
+
     def execute(self):
-        return FakeResponse(count=3)
+        if self.mode == "select":
+            rows = self.rows[: self.limit_size]
+            return FakeResponse(data=rows)
+        if self.mode == "delete":
+            deleted = set(self.deleted_ids)
+            self.rows = [row for row in self.rows if row["id"] not in deleted]
+            return FakeResponse()
+        raise AssertionError("FakeForecastTable executed without a mode")
 
 
 class FakeForecastClient:
@@ -100,6 +131,61 @@ class FakeDatasetClient:
 
     def table(self, name):
         return FakeDatasetTable(self.rows)
+
+
+class FakeAppDatasetTable:
+    def __init__(self, rows):
+        self.rows = rows
+        self.filters = []
+        self.order_column = None
+        self.range_start = 0
+        self.range_end = None
+
+    def select(self, columns):
+        return self
+
+    def in_(self, column, values):
+        value_set = {str(value) for value in values}
+        self.filters.append(lambda row, column=column, value_set=value_set: str(row.get(column)) in value_set)
+        return self
+
+    def eq(self, column, value):
+        self.filters.append(lambda row, column=column, value=value: str(row.get(column)) == str(value))
+        return self
+
+    def gte(self, column, value):
+        self.filters.append(lambda row, column=column, value=value: str(row.get(column)) >= str(value))
+        return self
+
+    def lte(self, column, value):
+        self.filters.append(lambda row, column=column, value=value: str(row.get(column)) <= str(value))
+        return self
+
+    def order(self, column):
+        self.order_column = column
+        return self
+
+    def range(self, start, end):
+        self.range_start = start
+        self.range_end = end
+        return self
+
+    def execute(self):
+        rows = list(self.rows)
+        for row_filter in self.filters:
+            rows = [row for row in rows if row_filter(row)]
+        if self.order_column:
+            rows.sort(key=lambda row: str(row.get(self.order_column) or ""))
+        end = self.range_end + 1 if self.range_end is not None else None
+        return FakeResponse(data=rows[self.range_start : end])
+
+
+class FakeAppDatasetClient:
+    def __init__(self, tables):
+        self.tables = tables
+
+    def table(self, name):
+        return FakeAppDatasetTable(self.tables.get(name, []))
 
 
 class FakeR2Client:
@@ -393,19 +479,30 @@ class EnvironmentConsolidationTest(unittest.TestCase):
         self.assertIn("No space left on device", repo.disabled_reason)
 
     def test_forecast_delete_expired_uses_explicit_cutoff(self):
+        previous_delete_batch_size = os.environ.get("FORECAST_DELETE_BATCH_SIZE")
+        os.environ["FORECAST_DELETE_BATCH_SIZE"] = "2"
         client = FakeForecastClient()
-        repo = Vu2LamerForecastRepository(client=client)
-        cutoff = datetime(2026, 5, 14, 8, 12, tzinfo=timezone.utc)
 
-        deleted = repo.delete_expired(cutoff=cutoff)
+        try:
+            repo = Vu2LamerForecastRepository(client=client)
+            cutoff = datetime(2026, 5, 14, 8, 12, tzinfo=timezone.utc)
+            deleted = repo.delete_expired(cutoff=cutoff)
+        finally:
+            if previous_delete_batch_size is None:
+                os.environ.pop("FORECAST_DELETE_BATCH_SIZE", None)
+            else:
+                os.environ["FORECAST_DELETE_BATCH_SIZE"] = previous_delete_batch_size
 
         self.assertEqual(deleted, 3)
         self.assertEqual(client.forecast_table.deleted_column, "valid_time")
         self.assertEqual(client.forecast_table.deleted_cutoff, "2026-05-14T08:12:00+00:00")
+        self.assertEqual(client.forecast_table.deleted_ids, ["old-1", "old-2", "old-3"])
 
     def test_training_dataset_repository_fetches_paginated_rows(self):
         previous_batch_size = os.environ.get("TRAINING_DATASET_FETCH_BATCH_SIZE")
+        previous_source = os.environ.get("TRAINING_DATASET_SOURCE")
         os.environ["TRAINING_DATASET_FETCH_BATCH_SIZE"] = "2"
+        os.environ["TRAINING_DATASET_SOURCE"] = "view"
         rows = [{"outing_id": "1"}, {"outing_id": "2"}, {"outing_id": "3"}]
 
         try:
@@ -416,8 +513,100 @@ class EnvironmentConsolidationTest(unittest.TestCase):
                 os.environ.pop("TRAINING_DATASET_FETCH_BATCH_SIZE", None)
             else:
                 os.environ["TRAINING_DATASET_FETCH_BATCH_SIZE"] = previous_batch_size
+            if previous_source is None:
+                os.environ.pop("TRAINING_DATASET_SOURCE", None)
+            else:
+                os.environ["TRAINING_DATASET_SOURCE"] = previous_source
 
         self.assertEqual(fetched, rows)
+
+    def test_training_dataset_repository_uses_current_app_tables(self):
+        previous_batch_size = os.environ.get("TRAINING_DATASET_FETCH_BATCH_SIZE")
+        previous_source = os.environ.get("TRAINING_DATASET_SOURCE")
+        os.environ["TRAINING_DATASET_FETCH_BATCH_SIZE"] = "2"
+        os.environ["TRAINING_DATASET_SOURCE"] = "app_tables"
+        client = FakeAppDatasetClient(
+            {
+                "dive_spots": [
+                    {
+                        "id": "obs-1",
+                        "dive_id": "dive-1",
+                        "spot_id": "spot-1",
+                        "estimated_visibility": 8,
+                        "visited_at": "2026-05-14T08:30:00+00:00",
+                        "latitude": None,
+                        "longitude": None,
+                        "label": "Pointe nord",
+                        "position": 1,
+                        "created_at": "2026-05-14T09:00:00+00:00",
+                    }
+                ],
+                "dives": [
+                    {
+                        "id": "dive-1",
+                        "spot_id": "spot-fallback",
+                        "updated_at": "2026-05-14T09:15:00+00:00",
+                        "cover_image_url": "https://example.test/cover.webp",
+                    }
+                ],
+                "dive_spot_images": [
+                    {
+                        "dive_spot_id": "obs-1",
+                        "image_url": "https://example.test/visibility.webp",
+                        "position": 1,
+                        "created_at": "2026-05-14T09:05:00+00:00",
+                        "use_for_visibility": True,
+                    }
+                ],
+                "spots": [
+                    {
+                        "id": "spot-1",
+                        "name": "Les Pierres",
+                        "latitude_min": 48.0,
+                        "latitude_max": 48.2,
+                        "longitude_min": -4.6,
+                        "longitude_max": -4.4,
+                    }
+                ],
+                "environment_forecasts": [
+                    {
+                        "spot_id": "spot-1",
+                        "valid_time": "2026-05-14T08:00:00+00:00",
+                        "forecast_run_at": "2026-05-14T06:00:00+00:00",
+                        "forecast_horizon_hours": 2,
+                        "sources": ["open_meteo_marine"],
+                        "provenance": {},
+                        "wave_height_m": 0.8,
+                        "water_temperature_c": 13.2,
+                    }
+                ],
+            }
+        )
+
+        try:
+            repo = Vu2LamerDiveTrainingDatasetRepository(client=client)
+            rows = repo.fetch_rows()
+        finally:
+            if previous_batch_size is None:
+                os.environ.pop("TRAINING_DATASET_FETCH_BATCH_SIZE", None)
+            else:
+                os.environ["TRAINING_DATASET_FETCH_BATCH_SIZE"] = previous_batch_size
+            if previous_source is None:
+                os.environ.pop("TRAINING_DATASET_SOURCE", None)
+            else:
+                os.environ["TRAINING_DATASET_SOURCE"] = previous_source
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["outing_id"], "obs-1")
+        self.assertEqual(rows[0]["dive_id"], "dive-1")
+        self.assertEqual(rows[0]["spot_id"], "spot-1")
+        self.assertIsNone(rows[0]["sector_id"])
+        self.assertEqual(rows[0]["observed_visibility_m"], 8.0)
+        self.assertEqual(rows[0]["latitude"], 48.1)
+        self.assertEqual(rows[0]["longitude"], -4.5)
+        self.assertEqual(rows[0]["visibility_image_url"], "https://example.test/visibility.webp")
+        self.assertEqual(rows[0]["wave_height_m"], 0.8)
+        self.assertEqual(rows[0]["water_temperature_c"], 13.2)
 
     def test_r2_archive_writes_source_values_as_gzipped_jsonl(self):
         fake_client = FakeR2Client()

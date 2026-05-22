@@ -2,7 +2,7 @@ name: Check Alerts & Notify
 
 on:
   workflow_run:
-    workflows: ["Environment Forecast Sync"]
+    workflows: ["Environment Forecast Publish"]
     types: [completed]
     branches: [main]
   workflow_dispatch:
