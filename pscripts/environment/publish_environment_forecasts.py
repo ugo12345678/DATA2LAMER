@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from pscripts.environment.consolidation import consolidate_source_values
 from pscripts.environment.r2_storage import R2SourceValueArchive, R2TrainingDatasetArchive
@@ -66,6 +66,26 @@ def _publish_training_dataset(run_time: datetime, rows: list[dict]) -> None:
         print(f"[WARN] R2 training dataset write skipped: {exc}")
 
 
+def _cleanup_r2_archives(r2_archive: R2SourceValueArchive) -> int:
+    if os.environ.get("R2_CLEANUP_ENABLED", "true").lower() not in {"1", "true", "yes"}:
+        return 0
+
+    now = datetime.now(timezone.utc)
+    source_retention_days = int(os.environ.get("R2_SOURCE_VALUES_RETENTION_DAYS", "7"))
+    deleted_source_values = 0
+
+    try:
+        if source_retention_days > 0:
+            cutoff = now - timedelta(days=source_retention_days)
+            deleted_source_values = r2_archive.delete_runs_older_than(cutoff)
+    except Exception as exc:
+        if os.environ.get("R2_CLEANUP_REQUIRED", "false").lower() in {"1", "true", "yes"}:
+            raise
+        print(f"[WARN] R2 cleanup skipped: {exc}")
+
+    return deleted_source_values
+
+
 def main() -> None:
     print("=== ENVIRONMENT FORECAST PUBLISH FROM R2 ===")
     pipeline_started_at = datetime.now(timezone.utc)
@@ -112,9 +132,11 @@ def main() -> None:
     dataset_rows_after_publish = _fetch_training_dataset_rows()
     _publish_training_dataset(run_time, [*dataset_rows_before_purge, *dataset_rows_after_publish])
     deleted = app_repo.delete_expired(cutoff=pipeline_started_at)
+    deleted_r2_source_values = _cleanup_r2_archives(r2_archive)
 
     print(f"[OK] VU2LAMER environment rows upserted: {upserted}")
     print(f"[OK] VU2LAMER expired rows deleted: {deleted}")
+    print(f"[OK] R2 old source value objects deleted: {deleted_r2_source_values}")
     print(json.dumps(consolidated_rows[:2], indent=2, default=str))
 
 

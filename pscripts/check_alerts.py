@@ -233,6 +233,39 @@ def load_forecasts_for_spots(spot_ids: list, target_date: str) -> list[dict]:
     return resp.data or []
 
 
+def load_forecast_window() -> tuple[str | None, str | None]:
+    db = client()
+    try:
+        earliest = (
+            db.table(FORECAST_TABLE)
+            .select("target_date")
+            .order("target_date")
+            .limit(1)
+            .execute()
+        )
+        latest = (
+            db.table(FORECAST_TABLE)
+            .select("target_date")
+            .order("target_date", desc=True)
+            .limit(1)
+            .execute()
+        )
+    except Exception as exc:
+        print(f"[WARN] forecast window lookup failed: {exc}")
+        return None, None
+
+    min_date = earliest.data[0]["target_date"] if earliest.data else None
+    max_date = latest.data[0]["target_date"] if latest.data else None
+    return min_date, max_date
+
+
+def target_date_in_window(target_date: str, forecast_window: tuple[str | None, str | None]) -> bool:
+    min_date, max_date = forecast_window
+    if not min_date or not max_date:
+        return True
+    return min_date <= target_date <= max_date
+
+
 def group_forecasts_by_spot(forecasts: list[dict]) -> dict[str, list[dict]]:
     grouped: dict[str, list[dict]] = {}
     for forecast in forecasts:
@@ -525,10 +558,15 @@ def main() -> None:
     all_alert_ids = [alert["id"] for alert in alerts]
     notified_today = already_notified_today(all_alert_ids)
     user_emails = load_user_emails(all_user_ids)
+    forecast_window = load_forecast_window()
+    if forecast_window[0] and forecast_window[1]:
+        print(f"Forecast window: {forecast_window[0]} -> {forecast_window[1]}")
 
     emails_sent = 0
     alerts_triggered = 0
     skipped_already_sent = 0
+    skipped_no_spots = 0
+    skipped_outside_forecast_window = 0
 
     for alert in alerts:
         alert_name = alert.get("name", alert["id"])
@@ -542,7 +580,15 @@ def main() -> None:
         target_date = (datetime.now(target_tz) + timedelta(days=forecast_day)).strftime("%Y-%m-%d")
         spot_ids = [item["spot_id"] for item in alert.get("alert_spots") or []]
         if not spot_ids:
+            skipped_no_spots += 1
             print(f"[{alert_name}] no spots, skipped.")
+            continue
+        if not target_date_in_window(target_date, forecast_window):
+            skipped_outside_forecast_window += 1
+            print(
+                f"[{alert_name}] target date {target_date} outside published forecast window "
+                f"{forecast_window[0]} -> {forecast_window[1]}, skipped."
+            )
             continue
 
         forecasts = load_forecasts_for_spots(spot_ids, target_date)
@@ -571,6 +617,12 @@ def main() -> None:
         "alerts_triggered": alerts_triggered,
         "emails_sent": emails_sent,
         "skipped_already_sent": skipped_already_sent,
+        "skipped_no_spots": skipped_no_spots,
+        "skipped_outside_forecast_window": skipped_outside_forecast_window,
+        "forecast_window": {
+            "min_target_date": forecast_window[0],
+            "max_target_date": forecast_window[1],
+        },
     }
     report_dir = Path("artifacts")
     report_dir.mkdir(exist_ok=True)

@@ -10,6 +10,59 @@ from typing import Any
 from pscripts.environment.entities import SourceConfig, SourceValue
 
 
+def _chunks(items: list[str], size: int):
+    for start in range(0, len(items), size):
+        yield items[start : start + size]
+
+
+def _partitioned_run_time_from_key(key: str) -> datetime | None:
+    run_date = None
+    run_hour = None
+    for part in key.split("/"):
+        if part.startswith("run_date="):
+            run_date = part.removeprefix("run_date=")
+        elif part.startswith("run_hour="):
+            run_hour = part.removeprefix("run_hour=")
+
+    if not run_date or run_hour is None:
+        return None
+    try:
+        return datetime.fromisoformat(f"{run_date}T{int(run_hour):02d}:00:00+00:00")
+    except (TypeError, ValueError):
+        return None
+
+
+def _list_object_keys(archive, prefix: str) -> list[str]:
+    if not archive.available:
+        return []
+
+    keys: list[str] = []
+    paginator = archive.client().get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=archive.bucket, Prefix=prefix):
+        for item in page.get("Contents", []):
+            key = item.get("Key")
+            if key:
+                keys.append(key)
+    return sorted(keys)
+
+
+def _delete_object_keys(archive, keys: list[str]) -> int:
+    if not archive.available or not keys:
+        return 0
+
+    deleted = 0
+    for batch in _chunks(keys, 1000):
+        archive.client().delete_objects(
+            Bucket=archive.bucket,
+            Delete={
+                "Objects": [{"Key": key} for key in batch],
+                "Quiet": True,
+            },
+        )
+        deleted += len(batch)
+    return deleted
+
+
 class R2SourceValueArchive:
     def __init__(
         self,
@@ -159,6 +212,18 @@ class R2SourceValueArchive:
             if line.strip():
                 values.append(SourceValue.from_data2lamer_row(json.loads(line)))
         return values
+
+    def delete_runs_older_than(self, cutoff: datetime) -> int:
+        cutoff = cutoff.astimezone(timezone.utc)
+        prefix = f"{self.prefix}/"
+        keys_to_delete = []
+        for key in _list_object_keys(self, prefix):
+            if not key.startswith(prefix) or not key.endswith(".jsonl.gz"):
+                continue
+            run_time = _partitioned_run_time_from_key(key)
+            if run_time is not None and run_time < cutoff:
+                keys_to_delete.append(key)
+        return _delete_object_keys(self, keys_to_delete)
 
 
 class R2TrainingDatasetArchive:

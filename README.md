@@ -94,6 +94,9 @@ R2_ACCESS_KEY_ID
 R2_SECRET_ACCESS_KEY
 R2_BUCKET
 R2_SOURCE_VALUES_PREFIX=environment/source_values
+R2_CLEANUP_ENABLED=true
+R2_CLEANUP_REQUIRED=false
+R2_SOURCE_VALUES_RETENTION_DAYS=7
 FORECAST_DAYS=3
 FORECAST_TARGET_TIMEZONE=Europe/Paris
 OPEN_METEO_BATCH_SIZE=50
@@ -129,12 +132,13 @@ R2_SYNC_LOOKBACK_HOURS=12
 FORECAST_DELETE_BATCH_SIZE=100
 ```
 
-Par defaut, le workflow programme reste volontairement limite aux sources rapides pour eviter les timeouts GitHub Actions et les limites horaires Open-Meteo. Pour un run complet manuel, definir `FORECAST_SOURCES` avec les codes voulus et passer `ENABLE_CMEMS=true` si les datasets Copernicus doivent etre interroges.
+Par defaut, le workflow programme collecte 3 jours pour rester leger. Les alertes dont `forecast_day` depasse la fenetre publiee sont simplement ignorees pendant ce run.
 Pour limiter le temps CMEMS, preferer une selection explicite comme `FORECAST_SOURCES=cmems_ibi_bgc` lorsque seules les variables biogeochimiques sont necessaires. Le pipeline demande seulement les variables utiles et la surface (`CMEMS_SUBSET_SURFACE_DEPTH=true`) puis charge le sous-ensemble en memoire pour eviter les lectures distantes repetitives.
 Le risque d'efflorescence `algal_bloom_risk` est un proxy de bloom phytoplanctonique derive de la chlorophylle CMEMS, pas une probabilite officielle de HAB toxique.
 La publication Supabase est separee de la collecte : si Supabase timeoute, relancer `Environment Forecast Publish` suffit, sans refaire les appels meteo.
 
 Au lancement de `Environment Forecast Publish`, les nouvelles lignes `environment_forecasts` sont upsertees puis les lignes dont `valid_time` est deja passe par rapport au debut du script sont supprimees par petits lots (`FORECAST_DELETE_BATCH_SIZE`) pour eviter les timeouts PostgREST.
+Le publish nettoie aussi les anciens runs source R2 si `R2_CLEANUP_ENABLED=true` : seules les archives brutes sous `environment/source_values/...` plus anciennes que `R2_SOURCE_VALUES_RETENTION_DAYS` sont supprimees. Le dataset d'entrainement sous `training/dive_visibility/...` est conserve pour garder l'historique.
 
 Le publish alimente aussi un dataset d'entrainement R2 depuis les tables applicatives VU2LAMER actuelles (`dives`, `dive_spots`, `dive_spot_images`, `spots` et `environment_forecasts`). Les observations de visibilite viennent de `dive_spots`. Le dataset est cumulatif :
 

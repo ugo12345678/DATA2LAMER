@@ -118,6 +118,18 @@ class CheckAlertsTest(unittest.TestCase):
         self.assertIn('workflows: ["Environment Forecast Publish"]', content)
         self.assertNotIn('workflows: ["Environment Forecast Sync"]', content)
 
+    def test_target_date_window_check_detects_unpublished_horizon(self):
+        forecast_window = ("2026-05-22", "2026-05-25")
+
+        self.assertTrue(check_alerts.target_date_in_window("2026-05-25", forecast_window))
+        self.assertFalse(check_alerts.target_date_in_window("2026-05-27", forecast_window))
+
+    def test_forecast_sync_default_keeps_short_horizon(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        content = (repo_root / ".github" / "workflows" / "forecast_data.yml").read_text(encoding="utf-8")
+
+        self.assertIn("FORECAST_DAYS: ${{ vars.FORECAST_DAYS || '3' }}", content)
+
 
 if __name__ == "__main__":
     unittest.main()

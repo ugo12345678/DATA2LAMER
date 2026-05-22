@@ -195,6 +195,11 @@ class FakeR2Client:
     def put_object(self, **kwargs):
         self.objects.append(kwargs)
 
+    def delete_objects(self, **kwargs):
+        deleted_keys = {item["Key"] for item in kwargs["Delete"]["Objects"]}
+        self.objects = [item for item in self.objects if item["Key"] not in deleted_keys]
+        return {"Deleted": [{"Key": key} for key in deleted_keys]}
+
     def get_paginator(self, name):
         if name != "list_objects_v2":
             raise ValueError(name)
@@ -206,6 +211,10 @@ class FakeR2Client:
             if item["Key"] == key:
                 return {"Body": BytesIO(item["Body"])}
         raise KeyError(key)
+
+
+def fake_r2_object(key: str, body: bytes = b"") -> dict:
+    return {"Bucket": "bucket", "Key": key, "Body": body}
 
 
 class FakeR2Paginator:
@@ -675,6 +684,30 @@ class EnvironmentConsolidationTest(unittest.TestCase):
         self.assertEqual(keys, [key])
         self.assertEqual(values[0].spot_id, "spot-1")
         self.assertEqual(values[0].valid_time, run_time)
+
+    def test_r2_source_archive_deletes_runs_older_than_cutoff(self):
+        fake_client = FakeR2Client()
+        fake_client.objects = [
+            fake_r2_object("test/source_values/run_date=2026-05-10/run_hour=08/source_code=a/old.jsonl.gz"),
+            fake_r2_object("test/source_values/run_date=2026-05-14/run_hour=08/source_code=a/current.jsonl.gz"),
+            fake_r2_object("other/source_values/run_date=2026-05-10/run_hour=08/source_code=a/keep.jsonl.gz"),
+        ]
+        archive = R2SourceValueArchive(
+            bucket="bucket",
+            endpoint_url="https://example.r2.cloudflarestorage.com",
+            access_key_id="key",
+            secret_access_key="secret",
+            prefix="test/source_values",
+        )
+        archive._client = fake_client
+
+        deleted = archive.delete_runs_older_than(datetime(2026, 5, 12, tzinfo=timezone.utc))
+
+        remaining_keys = {item["Key"] for item in fake_client.objects}
+        self.assertEqual(deleted, 1)
+        self.assertNotIn("test/source_values/run_date=2026-05-10/run_hour=08/source_code=a/old.jsonl.gz", remaining_keys)
+        self.assertIn("test/source_values/run_date=2026-05-14/run_hour=08/source_code=a/current.jsonl.gz", remaining_keys)
+        self.assertIn("other/source_values/run_date=2026-05-10/run_hour=08/source_code=a/keep.jsonl.gz", remaining_keys)
 
     def test_r2_training_dataset_archive_writes_jsonl(self):
         fake_client = FakeR2Client()
