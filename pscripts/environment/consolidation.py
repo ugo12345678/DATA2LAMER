@@ -13,6 +13,7 @@ from pscripts.environment.timeutils import horizon_hours
 
 
 DERIVED_TIDE_SOURCE_CODE = "derived_tide_range"
+TIDE_APPROX_COEFFICIENT_RANGE_100_M = 6.10
 
 
 def _mean(values: list[float]) -> float | None:
@@ -151,6 +152,108 @@ def _metric_provenance(metric: str, spec, metric_values: list[SourceValue]) -> d
     return provenance
 
 
+def _tide_coefficient_reference_range_m() -> float:
+    raw_value = os.environ.get("TIDE_APPROX_COEFFICIENT_RANGE_100_M")
+    if raw_value is None:
+        return TIDE_APPROX_COEFFICIENT_RANGE_100_M
+
+    try:
+        value = float(raw_value)
+    except ValueError:
+        return TIDE_APPROX_COEFFICIENT_RANGE_100_M
+
+    if value <= 0:
+        return TIDE_APPROX_COEFFICIENT_RANGE_100_M
+    return value
+
+
+def _approximate_tide_coefficient(tidal_range_m: float) -> float:
+    reference_range_m = _tide_coefficient_reference_range_m()
+    coefficient = round((tidal_range_m / reference_range_m) * 100.0)
+    return float(max(20, min(120, coefficient)))
+
+
+def _tide_event_type(previous_height: float, current_height: float, next_height: float) -> str | None:
+    if current_height >= previous_height and current_height > next_height:
+        return "high"
+    if current_height <= previous_height and current_height < next_height:
+        return "low"
+    return None
+
+
+def _add_tide_derived_fields(rows: list[dict[str, Any]]) -> None:
+    rows_by_spot: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    rows_by_spot_date: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+
+    for row in rows:
+        if row.get("sea_level_height_m") is None:
+            continue
+        rows_by_spot[str(row["spot_id"])].append(row)
+        rows_by_spot_date[(str(row["spot_id"]), str(row["target_date"]))].append(row)
+
+    for spot_date_rows in rows_by_spot_date.values():
+        heights = [float(row["sea_level_height_m"]) for row in spot_date_rows]
+        if len(heights) < 2:
+            continue
+
+        min_height = min(heights)
+        max_height = max(heights)
+        tidal_range = max_height - min_height
+        coefficient_approx = _approximate_tide_coefficient(tidal_range)
+        provenance = {
+            "metric": "tide_coefficient_approx",
+            "unit": "approx_coef",
+            "method": "daily_tidal_range_scaled",
+            "source_column": "sea_level_height_m",
+            "reference_range_100_m": _tide_coefficient_reference_range_m(),
+            "note": "Approximate DATA2LAMER index, not an official SHOM tide coefficient.",
+        }
+
+        for row in spot_date_rows:
+            row["tide_min_height_m"] = min_height
+            row["tide_max_height_m"] = max_height
+            row["tide_range_m"] = tidal_range
+            row["tide_coefficient_approx"] = coefficient_approx
+            row.setdefault("provenance", {})["tide_coefficient_approx"] = provenance
+
+    for spot_rows in rows_by_spot.values():
+        spot_rows.sort(key=lambda item: item["valid_time"])
+        events: list[dict[str, Any]] = []
+
+        for index in range(1, len(spot_rows) - 1):
+            previous_height = float(spot_rows[index - 1]["sea_level_height_m"])
+            current_height = float(spot_rows[index]["sea_level_height_m"])
+            next_height = float(spot_rows[index + 1]["sea_level_height_m"])
+            event_type = _tide_event_type(previous_height, current_height, next_height)
+            if event_type is None:
+                continue
+            events.append(
+                {
+                    "type": event_type,
+                    "time": spot_rows[index]["valid_time"],
+                    "height_m": current_height,
+                }
+            )
+
+        for index, row in enumerate(spot_rows):
+            if index + 1 < len(spot_rows):
+                current_height = float(row["sea_level_height_m"])
+                next_height = float(spot_rows[index + 1]["sea_level_height_m"])
+                if next_height > current_height:
+                    row["tide_phase"] = "rising"
+                elif next_height < current_height:
+                    row["tide_phase"] = "falling"
+                else:
+                    row["tide_phase"] = "slack"
+
+            next_events = [event for event in events if event["time"] >= row["valid_time"]]
+            if next_events:
+                next_event = next_events[0]
+                row["next_tide_event_type"] = next_event["type"]
+                row["next_tide_event_time"] = next_event["time"]
+                row["next_tide_event_height_m"] = next_event["height_m"]
+
+
 def consolidate_source_values(values: list[SourceValue], run_time: datetime) -> list[dict[str, Any]]:
     by_spot_time_metric: dict[tuple[str, datetime, str], list[SourceValue]] = defaultdict(list)
     target_tz = ZoneInfo(os.environ.get("FORECAST_TARGET_TIMEZONE", "Europe/Paris"))
@@ -200,5 +303,6 @@ def consolidate_source_values(values: list[SourceValue], run_time: datetime) -> 
         row["provenance"] = provenance_map[row_key]
         rows.append(row)
 
+    _add_tide_derived_fields(rows)
     rows.sort(key=lambda item: (item["spot_id"], item["valid_time"]))
     return rows

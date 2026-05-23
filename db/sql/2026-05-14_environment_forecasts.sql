@@ -64,6 +64,14 @@ create table if not exists public.environment_forecasts (
   water_temperature_c double precision,
   sea_level_height_m double precision,
   tide_coefficient double precision,
+  tide_coefficient_approx double precision,
+  tide_min_height_m double precision,
+  tide_max_height_m double precision,
+  tide_range_m double precision,
+  tide_phase text,
+  next_tide_event_type text,
+  next_tide_event_time timestamptz,
+  next_tide_event_height_m double precision,
   current_speed_ms double precision,
   current_direction_deg double precision,
   salinity_psu double precision,
@@ -83,7 +91,11 @@ create table if not exists public.environment_forecasts (
   constraint environment_forecasts_wave_direction_check
     check (wave_direction_deg is null or (wave_direction_deg >= 0 and wave_direction_deg < 360)),
   constraint environment_forecasts_current_direction_check
-    check (current_direction_deg is null or (current_direction_deg >= 0 and current_direction_deg < 360))
+    check (current_direction_deg is null or (current_direction_deg >= 0 and current_direction_deg < 360)),
+  constraint environment_forecasts_tide_phase_check
+    check (tide_phase is null or tide_phase in ('rising', 'falling', 'slack')),
+  constraint environment_forecasts_next_tide_event_type_check
+    check (next_tide_event_type is null or next_tide_event_type in ('high', 'low'))
 );
 
 alter table public.environment_forecasts
@@ -122,6 +134,14 @@ alter table public.environment_forecasts
   add column if not exists water_temperature_c double precision,
   add column if not exists sea_level_height_m double precision,
   add column if not exists tide_coefficient double precision,
+  add column if not exists tide_coefficient_approx double precision,
+  add column if not exists tide_min_height_m double precision,
+  add column if not exists tide_max_height_m double precision,
+  add column if not exists tide_range_m double precision,
+  add column if not exists tide_phase text,
+  add column if not exists next_tide_event_type text,
+  add column if not exists next_tide_event_time timestamptz,
+  add column if not exists next_tide_event_height_m double precision,
   add column if not exists current_speed_ms double precision,
   add column if not exists current_direction_deg double precision,
   add column if not exists salinity_psu double precision,
@@ -136,6 +156,14 @@ alter table public.environment_forecasts
 
 alter table public.environment_forecasts
   drop constraint if exists environment_forecasts_spot_id_fkey;
+
+alter table public.environment_forecasts
+  drop constraint if exists environment_forecasts_tide_phase_check,
+  drop constraint if exists environment_forecasts_next_tide_event_type_check,
+  add constraint environment_forecasts_tide_phase_check
+    check (tide_phase is null or tide_phase in ('rising', 'falling', 'slack')),
+  add constraint environment_forecasts_next_tide_event_type_check
+    check (next_tide_event_type is null or next_tide_event_type in ('high', 'low'));
 
 delete from public.environment_forecasts ef
 where not exists (
@@ -388,6 +416,14 @@ begin
         ef.water_temperature_c,
         ef.sea_level_height_m,
         ef.tide_coefficient,
+        ef.tide_coefficient_approx,
+        ef.tide_min_height_m,
+        ef.tide_max_height_m,
+        ef.tide_range_m,
+        ef.tide_phase,
+        ef.next_tide_event_type,
+        ef.next_tide_event_time,
+        ef.next_tide_event_height_m,
         ef.current_speed_ms,
         ef.current_direction_deg,
         ef.salinity_psu,

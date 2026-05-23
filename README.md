@@ -63,10 +63,12 @@ Sources activees sans abonnement payant :
 - Open-Meteo Marine Best Match : vagues, houle, SST, courants et niveau marin sans cle API.
 - Open-Meteo Marine par modele : Météo-France Wave/Currents/SST, DWD EWAM/GWAM, NOAA GFS Wave.
 - SHOM horaires des marees : coefficients de maree quotidiens pour le port de reference configure (`SHOM_TIDE_HARBOR=BREST` par defaut), via un flux JSON du portail plutot que du scraping HTML.
-- maree.info : source historique optionnelle, desactivee par defaut.
 - Copernicus Marine / CMEMS : optionnel, gratuit avec identifiants `CMEMS_USERNAME` et `CMEMS_PASSWORD`.
 
 Les API payantes SHOM de prediction avancee et Meteo-France Marine direct ne sont pas integrees afin d'eviter les dependances a cle payante ou a conditions d'acces plus lourdes.
+
+Quand `sea_level_height_m` est disponible, DATA2LAMER derive des champs utiles pour l'affichage maree : marnage journalier, hauteur mini/maxi, phase montante/descendante, prochain evenement haute/basse mer et `tide_coefficient_approx`.
+`tide_coefficient_approx` est un indice maison calcule depuis le marnage prevu, calibre par defaut avec `TIDE_APPROX_COEFFICIENT_RANGE_100_M=6.10`. Il donne un ordre de grandeur comparable visuellement a un coefficient de maree, mais ce n'est pas un coefficient officiel SHOM.
 
 ## Synchronisation
 
@@ -116,9 +118,7 @@ SHOM_TIDE_HARBOR=BREST
 SHOM_TIDE_UTC=0
 ENABLE_DERIVED_TIDE_COEFFICIENTS=true
 TIDE_COEFFICIENT_RANGE_UNIT_M=6.10
-ENABLE_MAREE_INFO_TIDES=false
-MAREE_INFO_PORT_ID=82
-TIDE_COEFFICIENT_DAILY_REDUCER=max
+TIDE_APPROX_COEFFICIENT_RANGE_100_M=6.10
 ENABLE_CMEMS=false
 ENABLE_METNO=true
 CMEMS_USERNAME

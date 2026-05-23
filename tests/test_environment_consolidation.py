@@ -24,7 +24,6 @@ from pscripts.environment.sync_environment_forecasts import (
     source_value_metric_counts,
 )
 from pscripts.environment.sources import cmems
-from pscripts.environment.sources import maree_info
 from pscripts.environment.sources import open_meteo
 from pscripts.environment.sources import shom
 
@@ -328,7 +327,7 @@ class EnvironmentConsolidationTest(unittest.TestCase):
         values = [
             SourceValue(
                 "spot-1",
-                "maree_info_tide_coefficients",
+                "authorized_tide_source",
                 valid_time,
                 "tide_coefficient",
                 77.0,
@@ -380,38 +379,41 @@ class EnvironmentConsolidationTest(unittest.TestCase):
         self.assertAlmostEqual(rows[0]["tide_coefficient"], 60.0)
         self.assertEqual(rows[0]["provenance"]["tide_coefficient"]["sources"], ["derived_tide_range"])
 
-    def test_maree_info_coefficients_parser_reads_daily_values(self):
-        document = """
-        <table>
-          <tr><th colspan="8">Mai 2026</th></tr>
-          <tr><td></td><td>01 V</td><td>Fete du travail</td><td></td><td></td><td></td><td>82</td><td>82</td></tr>
-          <tr><td></td><td>17 D</td><td>Pascal</td><td></td><td></td><td></td><td>98</td><td>99</td></tr>
-        </table>
-        """
+    def test_derives_tide_display_fields_from_sea_level_height(self):
+        previous_reference = os.environ.get("TIDE_APPROX_COEFFICIENT_RANGE_100_M")
+        os.environ["TIDE_APPROX_COEFFICIENT_RANGE_100_M"] = "6.10"
+        run_time = datetime(2026, 5, 14, 0, tzinfo=timezone.utc)
+        values = [
+            SourceValue(
+                "spot-1",
+                "open_meteo_marine",
+                datetime(2026, 5, 14, hour, tzinfo=timezone.utc),
+                "sea_level_height",
+                height,
+                "m",
+                run_time,
+                "sea_level_height_msl",
+            )
+            for hour, height in [(0, -1.0), (6, 2.0), (12, -1.0), (18, 1.0)]
+        ]
 
-        coefficients = maree_info.parse_maree_info_coefficients(document)
+        try:
+            rows = consolidate_source_values(values, run_time)
+        finally:
+            if previous_reference is None:
+                os.environ.pop("TIDE_APPROX_COEFFICIENT_RANGE_100_M", None)
+            else:
+                os.environ["TIDE_APPROX_COEFFICIENT_RANGE_100_M"] = previous_reference
 
-        self.assertEqual(coefficients[datetime(2026, 5, 1).date()], [82, 82])
-        self.assertEqual(coefficients[datetime(2026, 5, 17).date()], [98, 99])
-
-    def test_maree_info_coefficients_parser_reads_flat_calendar_text(self):
-        document = """
-        <h2>Coefficients des marees 2026 Brest</h2>
-        Mai 2026
-        01 V
-        Fete du travail
-        82 82
-        17 D
-        Pascal
-        98 99
-        Afficher les dates des coefficients de maree
-        120 95 70
-        """
-
-        coefficients = maree_info.parse_maree_info_coefficients(document)
-
-        self.assertEqual(coefficients[datetime(2026, 5, 1).date()], [82, 82])
-        self.assertEqual(coefficients[datetime(2026, 5, 17).date()], [98, 99])
+        first_row = rows[0]
+        self.assertEqual(first_row["tide_min_height_m"], -1.0)
+        self.assertEqual(first_row["tide_max_height_m"], 2.0)
+        self.assertEqual(first_row["tide_range_m"], 3.0)
+        self.assertEqual(first_row["tide_coefficient_approx"], 49.0)
+        self.assertEqual(first_row["tide_phase"], "rising")
+        self.assertEqual(first_row["next_tide_event_type"], "high")
+        self.assertEqual(first_row["next_tide_event_height_m"], 2.0)
+        self.assertIn("not an official SHOM", first_row["provenance"]["tide_coefficient_approx"]["note"])
 
     def test_shom_coefficients_parser_reads_json_values(self):
         payload = {

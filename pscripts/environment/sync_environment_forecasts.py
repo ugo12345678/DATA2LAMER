@@ -12,7 +12,6 @@ from pscripts.environment.r2_storage import R2SourceValueArchive
 from pscripts.environment.repositories import Data2LamerForecastRepository, Vu2LamerForecastRepository
 from pscripts.environment.sources.base import ForecastSource
 from pscripts.environment.sources.cmems import CmemsBgcSource, CmemsPhySource, CmemsWavSource, cmems_enabled
-from pscripts.environment.sources.maree_info import MareeInfoTideCoefficientSource, maree_info_enabled
 from pscripts.environment.sources.shom import ShomTideCoefficientSource, shom_tide_enabled
 from pscripts.environment.sources.metno import MetNoLocationForecastSource
 from pscripts.environment.sources.open_meteo import (
@@ -115,9 +114,6 @@ def build_sources() -> list[ForecastSource]:
 
     if shom_tide_enabled():
         sources.append(ShomTideCoefficientSource())
-
-    if maree_info_enabled():
-        sources.append(MareeInfoTideCoefficientSource())
 
     if os.environ.get("ENABLE_CMEMS", "true").lower() in {"1", "true", "yes"} and cmems_enabled():
         sources.extend([CmemsWavSource(), CmemsPhySource(), CmemsBgcSource()])
