@@ -589,6 +589,16 @@ class EnvironmentConsolidationTest(unittest.TestCase):
                         "provenance": {},
                         "wave_height_m": 0.8,
                         "water_temperature_c": 13.2,
+                        "sea_level_height_m": 1.4,
+                        "tide_coefficient": 78,
+                        "tide_coefficient_approx": 74,
+                        "tide_min_height_m": -1.1,
+                        "tide_max_height_m": 3.4,
+                        "tide_range_m": 4.5,
+                        "tide_phase": "rising",
+                        "next_tide_event_type": "high",
+                        "next_tide_event_time": "2026-05-14T10:00:00+00:00",
+                        "next_tide_event_height_m": 3.4,
                     }
                 ],
             }
@@ -618,6 +628,16 @@ class EnvironmentConsolidationTest(unittest.TestCase):
         self.assertEqual(rows[0]["visibility_image_url"], "https://example.test/visibility.webp")
         self.assertEqual(rows[0]["wave_height_m"], 0.8)
         self.assertEqual(rows[0]["water_temperature_c"], 13.2)
+        self.assertEqual(rows[0]["sea_level_height_m"], 1.4)
+        self.assertEqual(rows[0]["tide_coefficient"], 78)
+        self.assertEqual(rows[0]["tide_coefficient_approx"], 74)
+        self.assertEqual(rows[0]["tide_min_height_m"], -1.1)
+        self.assertEqual(rows[0]["tide_max_height_m"], 3.4)
+        self.assertEqual(rows[0]["tide_range_m"], 4.5)
+        self.assertEqual(rows[0]["tide_phase"], "rising")
+        self.assertEqual(rows[0]["next_tide_event_type"], "high")
+        self.assertEqual(rows[0]["next_tide_event_time"], "2026-05-14T10:00:00+00:00")
+        self.assertEqual(rows[0]["next_tide_event_height_m"], 3.4)
 
     def test_r2_archive_writes_source_values_as_gzipped_jsonl(self):
         fake_client = FakeR2Client()
@@ -767,6 +787,28 @@ class EnvironmentConsolidationTest(unittest.TestCase):
         self.assertEqual(result["rows_count"], 1)
         self.assertEqual(len(latest_body), 1)
         self.assertIn('"observed_visibility_m":12', latest_body[0])
+
+    def test_r2_training_dataset_archive_deletes_only_its_prefix(self):
+        fake_client = FakeR2Client()
+        fake_client.objects = [
+            fake_r2_object("test/training/latest.jsonl.gz"),
+            fake_r2_object("test/training/runs/run_date=2026-05-14/run_hour=08/dataset_delta.jsonl.gz"),
+            fake_r2_object("test/source_values/run_date=2026-05-14/run_hour=08/source_code=a/run.jsonl.gz"),
+        ]
+        archive = R2TrainingDatasetArchive(
+            bucket="bucket",
+            endpoint_url="https://example.r2.cloudflarestorage.com",
+            access_key_id="key",
+            secret_access_key="secret",
+            prefix="test/training",
+        )
+        archive._client = fake_client
+
+        deleted = archive.delete_all_objects()
+
+        remaining_keys = {item["Key"] for item in fake_client.objects}
+        self.assertEqual(deleted, 2)
+        self.assertEqual(remaining_keys, {"test/source_values/run_date=2026-05-14/run_hour=08/source_code=a/run.jsonl.gz"})
 
     def test_open_meteo_hourly_rate_limit_stops_without_retrying(self):
         previous_cooldown = os.environ.get("OPEN_METEO_HOURLY_RATE_LIMIT_COOLDOWN_SEC")

@@ -278,6 +278,9 @@ class R2TrainingDatasetArchive:
     def latest_key(self) -> str:
         return f"{self.prefix}/latest.jsonl.gz"
 
+    def delete_all_objects(self) -> int:
+        return _delete_object_keys(self, _list_object_keys(self, f"{self.prefix}/"))
+
     def _encode_rows(self, rows: list[dict[str, Any]]) -> bytes:
         buffer = BytesIO()
         with gzip.GzipFile(fileobj=buffer, mode="wb") as gz:

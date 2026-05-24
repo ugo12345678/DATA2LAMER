@@ -160,6 +160,11 @@ R2_TRAINING_DATASET_PREFIX=training/dive_visibility
 ```
 
 `TRAINING_DATASET_SOURCE=view` reste disponible pour lire explicitement l'ancienne vue `dive_visibility_training_dataset` si une base VU2LAMER historique l'utilise encore.
+Pour repartir de zero apres un changement de schema du dataset, purger uniquement le prefixe d'entrainement R2 :
+
+```bash
+python -c "from pscripts.environment.r2_storage import R2TrainingDatasetArchive; archive = R2TrainingDatasetArchive.from_env(); print(archive.delete_all_objects())"
+```
 
 ## Alertes
 
