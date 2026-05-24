@@ -31,7 +31,7 @@ jobs:
       R2_SOURCE_VALUES_RETENTION_DAYS: ${{ vars.R2_SOURCE_VALUES_RETENTION_DAYS || '7' }}
 
       FORECAST_TARGET_TIMEZONE: Europe/Paris
-      APP_PROVENANCE_MODE: compact
+      APP_PROVENANCE_MODE: none
       FORECAST_UPSERT_BATCH_SIZE: ${{ vars.FORECAST_UPSERT_BATCH_SIZE || '100' }}
       FORECAST_SOURCES: ${{ vars.FORECAST_SOURCES || 'open_meteo_weather,open_meteo_dwd_icon,open_meteo_marine,open_meteo_marine_meteofrance_wave,metno_locationforecast,cmems_ibi_phy,cmems_ibi_bgc' }}
       R2_SYNC_LOOKBACK_HOURS: ${{ vars.R2_SYNC_LOOKBACK_HOURS || '12' }}

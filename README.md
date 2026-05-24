@@ -31,6 +31,7 @@ Une ligne correspond a un `spot_id` du catalogue `public.spots` et une heure UTC
 
 La colonne `provenance` conserve, par metrique, les sources et valeurs utilisees pour calculer la valeur finale.
 Par defaut, cette provenance est compactee (`APP_PROVENANCE_MODE=compact`) pour limiter le poids de la table applicative. Le mode `full` garde les valeurs source detaillees dans VU2LAMER, mais DATA2LAMER reste l'endroit recommande pour l'historique brut.
+Le mode `none` publie une provenance vide dans VU2LAMER, utile quand l'app n'affiche pas ce detail et que l'historique brut est deja archive dans R2/DATA2LAMER.
 La migration supprime l'ancienne table `forecast_predictions`.
 
 ### DATA2LAMER
@@ -106,7 +107,7 @@ OPEN_METEO_MIN_REQUEST_INTERVAL_SEC=3.0
 OPEN_METEO_MINUTELY_RATE_LIMIT_SLEEP_SEC=65
 OPEN_METEO_HOURLY_RATE_LIMIT_COOLDOWN_SEC=3600
 OPEN_METEO_MAX_RETRIES=3
-APP_PROVENANCE_MODE=compact
+APP_PROVENANCE_MODE=none
 DATA2LAMER_STORE_SOURCE_VALUES=false
 FORECAST_PUSH_TO_SUPABASE=false
 FORECAST_UPSERT_BATCH_SIZE=100

@@ -181,7 +181,7 @@ def _tide_event_type(previous_height: float, current_height: float, next_height:
     return None
 
 
-def _add_tide_derived_fields(rows: list[dict[str, Any]]) -> None:
+def _add_tide_derived_fields(rows: list[dict[str, Any]], provenance_enabled: bool = True) -> None:
     rows_by_spot: dict[str, list[dict[str, Any]]] = defaultdict(list)
     rows_by_spot_date: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
 
@@ -214,7 +214,8 @@ def _add_tide_derived_fields(rows: list[dict[str, Any]]) -> None:
             row["tide_max_height_m"] = max_height
             row["tide_range_m"] = tidal_range
             row["tide_coefficient_approx"] = coefficient_approx
-            row.setdefault("provenance", {})["tide_coefficient_approx"] = provenance
+            if provenance_enabled:
+                row.setdefault("provenance", {})["tide_coefficient_approx"] = provenance
 
     for spot_rows in rows_by_spot.values():
         spot_rows.sort(key=lambda item: item["valid_time"])
@@ -257,6 +258,7 @@ def _add_tide_derived_fields(rows: list[dict[str, Any]]) -> None:
 def consolidate_source_values(values: list[SourceValue], run_time: datetime) -> list[dict[str, Any]]:
     by_spot_time_metric: dict[tuple[str, datetime, str], list[SourceValue]] = defaultdict(list)
     target_tz = ZoneInfo(os.environ.get("FORECAST_TARGET_TIMEZONE", "Europe/Paris"))
+    provenance_enabled = os.environ.get("APP_PROVENANCE_MODE", "compact").lower() != "none"
     values = [*values, *_derive_tide_coefficients(values, run_time, target_tz)]
 
     for value in values:
@@ -293,16 +295,17 @@ def consolidate_source_values(values: list[SourceValue], run_time: datetime) -> 
 
         sources = sorted({item.source_code for item in metric_values})
         source_sets[row_key].update(sources)
-        provenance_map[row_key][spec.column] = _metric_provenance(metric, spec, metric_values)
+        if provenance_enabled:
+            provenance_map[row_key][spec.column] = _metric_provenance(metric, spec, metric_values)
 
     rows: list[dict[str, Any]] = []
     for row_key, row in row_map.items():
         sources = sorted(source_sets[row_key])
         row["source_count"] = len(sources)
         row["sources"] = sources
-        row["provenance"] = provenance_map[row_key]
+        row["provenance"] = provenance_map[row_key] if provenance_enabled else {}
         rows.append(row)
 
-    _add_tide_derived_fields(rows)
+    _add_tide_derived_fields(rows, provenance_enabled)
     rows.sort(key=lambda item: (item["spot_id"], item["valid_time"]))
     return rows
